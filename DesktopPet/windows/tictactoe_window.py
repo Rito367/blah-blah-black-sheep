@@ -5,6 +5,15 @@ Themed Tic-Tac-Toe pop-up window with live Win/Loss/Draw tracking and difficulty
 
 import tkinter as tk
 import random
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 WINNING_LINES = [
@@ -60,10 +69,11 @@ class TicTacToeWindow:
         tk.Label(hdr, text="❌⭕  Tic-Tac-Toe", bg=hdr_bg, fg="#ffffff",
                  font=("Georgia", 8, "bold")).pack(side="left")
         if self.on_menu:
+            on_menu = self.on_menu
             mb = tk.Label(hdr, text="☰", bg=hdr_bg, fg="#ffffff",
                           font=("Georgia", 8, "bold"), cursor="hand2")
             mb.pack(side="right")
-            mb.bind("<Button-1>", lambda e: self.on_menu(close_win=self.win, hide_fn=self.hide))
+            mb.bind("<Button-1>", lambda e: on_menu(close_win=self.win, hide_fn=self.hide))
 
         title_lbl = tk.Label(
             self.win, text="Tic-Tac-Toe\n(You: ❌ | Pet: ⭕)",
@@ -152,6 +162,9 @@ class TicTacToeWindow:
 
         self.game_active = False
         self._make_move(idx, "❌")
+
+        if not self.win or not self.win.winfo_exists():
+            return
 
         res = self._check_result(self.board)
         if res == "❌":

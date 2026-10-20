@@ -11,9 +11,12 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Any, Callable
 
-_CUR_DIR = os.path.dirname(os.path.abspath(__file__))
-if _CUR_DIR not in sys.path:
-    sys.path.insert(0, _CUR_DIR)
+try:
+    import paths
+except ImportError:
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
 
 import themes
 

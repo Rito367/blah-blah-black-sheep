@@ -6,13 +6,16 @@ Popup dialog to rename an existing character folder in assets/ and refresh the p
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
-import themes
-
 try:
     import paths
     ASSETS_DIR = paths.ASSETS_DIR
 except ImportError:
-    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+
+import themes
 
 
 class RenameCharacterWindow:

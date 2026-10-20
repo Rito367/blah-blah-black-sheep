@@ -110,7 +110,8 @@ def extract():
             frame_img = Image.fromarray(cell_rgba, "RGBA")
 
             # resize to game sprite size
-            frame_img = frame_img.resize(OUTPUT_SIZE, Image.LANCZOS)
+            resample_mode = getattr(getattr(Image, "Resampling", Image), "LANCZOS", 3)
+            frame_img = frame_img.resize(OUTPUT_SIZE, resample_mode)
 
             fname = out_dir / f"{col_idx + 1:02d}.png"
             frame_img.save(fname)

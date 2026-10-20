@@ -12,6 +12,15 @@ import calendar
 import tkinter as tk
 from datetime import date, datetime, timedelta
 from typing import Callable
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 # 2026 Singapore Public Holidays (YYYY-MM-DD)
@@ -34,7 +43,7 @@ DEFAULT_HOLIDAYS = [
 
 
 class TimerWindow:
-    def __init__(self, root: tk.Tk, get_data: Callable, save_data: Callable, on_alarm: Callable = None, on_menu: Callable = None):
+    def __init__(self, root: tk.Tk, get_data: Callable, save_data: Callable, on_alarm: Callable | None = None, on_menu: Callable | None = None):
         self.root = root
         self.get_data = get_data
         self.save_data = save_data
@@ -166,10 +175,11 @@ class TimerWindow:
         close_btn.bind("<Button-1>", lambda e: self.hide())
 
         if self.on_menu:
+            on_menu = self.on_menu
             mb = tk.Label(hdr, text="☰", bg=t.get("bg_card", "#20222e"),
                           fg=t.get("fg_main", "#ffffff"), font=("Segoe UI", 9, "bold"), cursor="hand2")
             mb.pack(side="right", padx=(0, 6))
-            mb.bind("<Button-1>", lambda e: self.on_menu(None, self.hide))
+            mb.bind("<Button-1>", lambda e: on_menu(None, self.hide))
 
         # ── Mode Switcher Bar ──
         mode_bar = tk.Frame(self.outer, bg=t.get("bg_grid", "#151620"), padx=2, pady=2)
@@ -378,6 +388,8 @@ class TimerWindow:
         self._render_calendar_popup(t)
 
     def _render_calendar_popup(self, t):
+        if self._cal_popup is None:
+            return
         for w in self._cal_popup.winfo_children():
             w.destroy()
 
@@ -444,7 +456,7 @@ class TimerWindow:
         tk.Button(
             outer, text="Cancel", font=("Segoe UI", 7, "bold"),
             bg=t.get("btn", "#2c2e3f"), fg=t.get("fg_white", "#ffffff"),
-            relief="flat", bd=0, pady=2, command=self._cal_popup.destroy
+            relief="flat", bd=0, pady=2, command=lambda: self._cal_popup.destroy() if self._cal_popup else None
         ).pack(fill="x", pady=(6, 0))
 
     def _prev_cal_month(self):

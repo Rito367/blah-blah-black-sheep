@@ -10,6 +10,15 @@ import calendar
 import datetime
 import uuid
 from typing import Callable
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 DAYS_HEADER = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]

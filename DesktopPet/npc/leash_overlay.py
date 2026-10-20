@@ -11,6 +11,14 @@ import math
 import random
 import tkinter as tk
 from pathlib import Path
+
+try:
+    import paths
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 import sound_manager
 

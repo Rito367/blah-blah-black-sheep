@@ -171,12 +171,13 @@ class StartupAppsWindow:
         close_btn.bind("<Button-1>", lambda e: self.hide())
 
         if self.on_menu:
+            on_menu = self.on_menu
             mb = tk.Label(
                 hdr, text="☰", bg=t.get("bg_card", "#20222e"),
                 fg=t.get("fg_main", "#ffffff"), font=("Segoe UI", 9, "bold"), cursor="hand2"
             )
             mb.pack(side="right", padx=(0, 6))
-            mb.bind("<Button-1>", lambda e: self.on_menu(close_win=self.win, hide_fn=self.hide))
+            mb.bind("<Button-1>", lambda e: on_menu(close_win=self.win, hide_fn=self.hide))
 
         data = self.get_data()
 

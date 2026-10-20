@@ -5,6 +5,15 @@ Themed Chopsticks finger game window against the Desktop Pet.
 
 import tkinter as tk
 import random
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 

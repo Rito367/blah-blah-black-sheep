@@ -9,7 +9,15 @@ Customizable Decision Maker tool for Desktop Pet:
 
 import random
 import tkinter as tk
-from tkinter import ttk
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 
@@ -75,12 +83,13 @@ class DecisionWindow:
         close_btn.bind("<Button-1>", lambda e: self._on_close())
 
         if self.on_menu:
+            on_menu = self.on_menu
             mb = tk.Label(hdr, text="☰",
                           bg=t.get("bg_card", "#20222e"),
                           fg=t.get("fg_main", "#ffffff"),
                           font=("Segoe UI", 9, "bold"), cursor="hand2")
             mb.pack(side="right", padx=(0, 6))
-            mb.bind("<Button-1>", lambda e: self.on_menu(close_win=self.win, hide_fn=self.hide))
+            mb.bind("<Button-1>", lambda e: on_menu(close_win=self.win, hide_fn=self.hide))
 
         # Tab Navigation Bar
         self.nav_frame = tk.Frame(self.outer, bg=t.get("bg_card", "#20222e"))

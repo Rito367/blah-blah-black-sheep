@@ -136,13 +136,13 @@ def remove_background(arr, bg_color):
     dist = np.sqrt(((arr.astype(float) - bg_color) ** 2).sum(axis=2))
 
     hardmask = dist <= FLOOD_TOLERANCE
-    lbl, _ = ndimage.label(hardmask, structure=np.ones((3, 3)))
+    lbl, _ = ndimage.label(hardmask, structure=np.ones((3, 3)))  # type: ignore[misc]
     border_labels = set(lbl[0, :]) | set(lbl[-1, :]) | set(lbl[:, 0]) | set(lbl[:, -1])
     border_labels.discard(0)
     bg_region = np.isin(lbl, list(border_labels)) if border_labels else np.zeros_like(hardmask)
 
     dilated = ndimage.binary_dilation(bg_region, iterations=FEATHER_DILATE_PX)
-    band = dilated & ~bg_region
+    band = np.logical_and(dilated, ~bg_region)
 
     alpha = np.full(dist.shape, 255.0)
     alpha[bg_region] = 0
@@ -155,7 +155,7 @@ def remove_background(arr, bg_color):
 def detect_frames(fg_mask, total_frames):
     """Find `total_frames` main blobs plus merge small nearby blobs (shadows etc)
     into their nearest main blob. Returns list of (left, top, right, bottom)."""
-    lbl, n = ndimage.label(fg_mask, structure=np.ones((3, 3)))
+    lbl, n = ndimage.label(fg_mask, structure=np.ones((3, 3)))  # type: ignore[misc]
     if n == 0:
         return []
 
@@ -188,7 +188,7 @@ def detect_frames(fg_mask, total_frames):
             gap = (gap_x ** 2 + gap_y ** 2) ** 0.5
             if best_dist is None or gap < best_dist:
                 best, best_dist = mid, gap
-        if best is not None and best_dist <= MERGE_MAX_GAP:
+        if best is not None and best_dist is not None and best_dist <= MERGE_MAX_GAP:
             b = boxes[best]
             b[0] = min(b[0], ex_box[0])
             b[1] = min(b[1], ex_box[1])
@@ -271,7 +271,8 @@ def main():
         for i, box in enumerate(chunk, start=1):
             pb = pad_box(box, w, h)
             frame = full_rgba_img.crop(pb)
-            if SKIP_BLANK_FRAMES and frame.getextrema()[3] == (0, 0):
+            extrema = frame.getextrema()
+            if SKIP_BLANK_FRAMES and len(extrema) >= 4 and extrema[3] == (0, 0):  # type: ignore[index]
                 continue
             count += 1
             fname = f"{count:0{FRAME_NAME_PADDING}d}.png"

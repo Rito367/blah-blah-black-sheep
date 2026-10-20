@@ -8,6 +8,14 @@ from tkinter import filedialog, messagebox
 import shutil
 from pathlib import Path
 from PIL import Image
+
+try:
+    import paths
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 
 ANIM_NAMES = ["idle", "walk", "jump", "sleep", "eat"]
@@ -205,7 +213,8 @@ class SpriteCutterWindow:
             )
 
             if self.on_complete:
-                self.on_complete(char_name=char_name, char_dir=char_dir, auto_equip=self.auto_equip_var.get())
+                on_complete = self.on_complete
+                on_complete(char_name=char_name, char_dir=char_dir, auto_equip=self.auto_equip_var.get())
 
             self.hide()
 

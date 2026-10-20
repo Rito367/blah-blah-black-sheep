@@ -13,6 +13,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Callable, Any
+from pathlib import Path
+import sys
+
+try:
+    import paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+
 import themes
 from world_locations import (
     ALL_COUNTRIES,

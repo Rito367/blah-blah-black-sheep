@@ -20,13 +20,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Any
 
-import data_store
-
 try:
     import paths
     ASSETS_DIR = paths.ASSETS_DIR
 except ImportError:
-    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+
+import data_store
 WHIP_CRACK_SOUND = ASSETS_DIR / "whip_crack.wav"
 WHIP_HIT_SOUND = ASSETS_DIR / "whip_hit.wav"
 WHIP_HIT_TRIMMED = ASSETS_DIR / "whip_hit_trimmed.wav"
