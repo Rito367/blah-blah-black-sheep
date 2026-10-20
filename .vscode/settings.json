@@ -1,16 +1,26 @@
 {
   "python.analysis.extraPaths": [
+    ".",
     "./DesktopPet",
     "./DesktopPet/core",
     "./DesktopPet/windows",
     "./DesktopPet/npc",
-    "./DesktopPet/tools"
+    "./DesktopPet/tools",
+    "./core",
+    "./windows",
+    "./npc",
+    "./tools"
   ],
   "python.autoComplete.extraPaths": [
+    ".",
     "./DesktopPet",
     "./DesktopPet/core",
     "./DesktopPet/windows",
     "./DesktopPet/npc",
-    "./DesktopPet/tools"
+    "./DesktopPet/tools",
+    "./core",
+    "./windows",
+    "./npc",
+    "./tools"
   ]
 }

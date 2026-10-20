@@ -380,7 +380,7 @@ class StartupAppsWindow:
         data = self.get_data()
         apps = data.get("startup_apps", [])
         if 0 <= index < len(apps):
-            removed = apps.pop(index)
+            apps.pop(index)
             data["startup_apps"] = apps
             self.save_data(data)
             self._refresh_app_list()

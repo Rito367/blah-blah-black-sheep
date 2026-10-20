@@ -4,7 +4,6 @@ Central path resolution and environment bootstrap for DesktopPet.
 Provides robust absolute paths for root directories, assets, data, and submodules.
 """
 from pathlib import Path
-import os
 import sys
 
 # Base project directory is DesktopPet/

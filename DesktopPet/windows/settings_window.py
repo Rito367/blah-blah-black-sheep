@@ -1009,7 +1009,7 @@ class SettingsWindow:
         # clamp preview font size so it fits the small canvas
         preview_fsz = max(7, min(fsz, 11))
 
-        W, H   = 200, 54
+        W      = 200
         bw, bh = 160, 36
         x0     = (W - bw) // 2
         y0     = 4

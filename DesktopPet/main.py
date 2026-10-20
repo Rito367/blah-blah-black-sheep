@@ -5,7 +5,6 @@ Character Renaming, Auto-Creation, Rollback, Leash, Hotkeys, Menu UI Scaling,
 Pet & UI Opacity Sliders, Decision Maker, and Custom Menu Color Support.
 """
 
-import os
 import random
 import subprocess
 import sys

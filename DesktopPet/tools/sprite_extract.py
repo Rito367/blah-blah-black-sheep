@@ -176,13 +176,9 @@ def detect_frames(fg_mask, total_frames):
         if len(xs) < 30:
             continue  # pure noise speck, ignore
         ex_box = [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
-        ecx = (ex_box[0] + ex_box[2]) / 2
-        ecy = (ex_box[1] + ex_box[3]) / 2
 
         best, best_dist = None, None
         for mid, mbox in boxes.items():
-            mcx = (mbox[0] + mbox[2]) / 2
-            mcy = (mbox[1] + mbox[3]) / 2
             gap_x = max(mbox[0] - ex_box[2], ex_box[0] - mbox[2], 0)
             gap_y = max(mbox[1] - ex_box[3], ex_box[1] - mbox[3], 0)
             gap = (gap_x ** 2 + gap_y ** 2) ** 0.5
@@ -205,14 +201,14 @@ def assign_rows(boxes, rows_cfg):
     result = []
     idx = 0
     for row_cfg in rows_cfg:
-        n = row_cfg["frames"]
+        n = int(row_cfg["frames"])
         chunk = boxes[idx:idx + n]
         idx += n
         chunk.sort(key=lambda b: (b[0] + b[2]) / 2)
-        result.append((row_cfg["name"], chunk))
+        result.append((str(row_cfg["name"]), chunk))
     if idx != len(boxes):
         print(f"WARNING: detected {len(boxes)} frames but ROWS config totals "
-              f"{sum(r['frames'] for r in rows_cfg)}. Adjust ROWS or FLOOD_TOLERANCE.")
+              f"{sum(int(r['frames']) for r in rows_cfg)}. Adjust ROWS or FLOOD_TOLERANCE.")
     return result
 
 
@@ -236,7 +232,7 @@ def main():
     img = Image.open(sheet_path).convert("RGB")
     arr = np.array(img)
     h, w = arr.shape[:2]
-    total_frames = sum(r["frames"] for r in ROWS)
+    total_frames = sum(int(r["frames"]) for r in ROWS)
     print(f"Sheet size: {w}x{h}  |  rows configured: {len(ROWS)}  |  total frames expected: {total_frames}")
 
     bg_color = get_bg_color(arr)

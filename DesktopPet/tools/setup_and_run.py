@@ -154,7 +154,7 @@ def install_package(package_spec: str) -> bool:
     print(f"[*] Installing {package_spec} via pip...")
     try:
         cmd = [sys.executable, "-m", "pip", "install", package_spec]
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             check=True,
             stdout=subprocess.PIPE,
@@ -192,7 +192,7 @@ def install_packages_batch(package_specs: list[str]) -> bool:
         )
         print("    [SUCCESS] All packages installed successfully.")
         return True
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("    [!] Batch installation encountered an issue, trying individual installs...")
         all_ok = True
         for pkg in package_specs:
