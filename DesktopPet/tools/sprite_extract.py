@@ -2,48 +2,66 @@
 """
 sprite_extract.py
 
-将精灵图表（每行一个动画序列）切分为独立的单帧图片，
-自动去除背景色（即便背景色是接近角色自身毛发或高光颜色的近白色/灰白色），
-并将提取后的每帧保存至 assets/<角色名>/<动画名>/NN.png。
+Slice a sprite sheet (one row per animation) into individual frames,
+remove the background (even when it's a near-white/off-white color
+close to the character's own fur/highlight colors), and save each
+frame into assets/<subject>/<animation>/NN.png
 
 ------------------------------------------------------------------
-工作原理
+HOW IT WORKS
 ------------------------------------------------------------------
-不同于假设所有图表都具备绝对均匀的像素网格（手绘或AI生成的图表很少具备完全一致的像素对齐），
-也不同于简单粗暴地将所有接近背景色的像素抠掉（这会导致浅色毛发被扣出透明空洞）：
+Rather than assuming a perfectly even pixel grid (hand/AI-drawn
+sheets are rarely pixel-exact) or naively chroma-keying every pixel
+close to the background color (which eats holes in light-colored fur
+that happens to be a similar color to the background), this script:
 
-  1. 自动检测背景色（默认采样左上角首个像素），除非手动显式指定了 BG_COLOR。
-  2. 从图片外边缘开始进行背景泛洪填充（Flood-fill）——仅与外边界“相连通”的像素才会被判定为背景。
-     即使角色体内有被深色轮廓包裹的纯白肚皮，由于未与外部边缘连通，依然会完整保留不透明度。
-  3. 在边界处进行柔和边缘羽化（部分 Alpha 透明度过渡），避免硬切导致的锯齿杂边，使边缘平滑自然。
-  4. 自动检测前景连通块的边界框（无需固定网格），并智能合并附近的微小碎块（如跳跃动作下方的投影阴影）。
-  5. 将检测到的各帧按从上到下划分为行、行内按从左到右排序，并映射到你所配置的动画名称上。
+  1. Finds the background color automatically (top-left corner
+     pixel) unless you set BG_COLOR explicitly.
+  2. Flood-fills the background starting from the sheet's outer edge
+     -- only pixels *connected* to the border are treated as
+     background. A white belly enclosed by a dark outline stroke
+     stays opaque even though its color is close to the background,
+     because it isn't connected to the outside.
+  3. Feathers a few pixels at the boundary (partial alpha) instead of
+     a hard cutout, so edges look smooth instead of jagged.
+  4. Auto-detects each frame's bounding box from the remaining
+     foreground blobs (instead of assuming a rigid grid), and merges
+     small nearby blobs (like a drop-shadow under a jump frame) into
+     the frame they belong to.
+  5. Sorts detected frames into rows (top-to-bottom) and columns
+     (left-to-right) and maps each row to the animation name you
+     configured.
 
 ------------------------------------------------------------------
-快速开始
+QUICK START
 ------------------------------------------------------------------
-1. 修改下方的配置参数（CONFIG 区块）：
-     - SHEET_PATH: 精灵图表文件路径
-     - SUBJECT: 角色根目录名（例如 "pet" -> assets/pet/...）
-     - ROWS: 按图表上从上到下的顺序，配置每个动画行的名称及该行包含的帧数。
+1. Edit the CONFIG block below:
+     - SHEET_PATH: path to your sprite sheet image
+     - SUBJECT: top-level folder name (e.g. "pet" -> assets/pet/...)
+     - ROWS: one entry per animation, in top-to-bottom order on the
+       sheet, with how many frames are in that row.
 
-2. 先执行预览模式，检查边界框检测是否准确对齐：
+2. Preview first to make sure detection lines up:
        python3 sprite_extract.py --preview
-   这将在精灵图同级目录下生成 preview_grid.png，每个检测到的动作帧都会被红框标出并标注动画名与帧序号。
-   请检查确认每个角色/小猫是否都被准确框选。
+   Writes preview_grid.png next to your sheet with a red box drawn
+   around every detected frame, labeled with the animation name and
+   frame number. Check every cat/character has exactly one box.
 
-3. 正式执行切图与提取：
+3. Extract for real:
        python3 sprite_extract.py
-   将自动生成 assets/<角色名>/<动画名>/01.png, 02.png, ...
+   Creates assets/<subject>/<animation>/01.png, 02.png, ...
 
 ------------------------------------------------------------------
-参数微调
+TUNING
 ------------------------------------------------------------------
-- 若检测出的连通块数量不正确，可调整 FLOOD_TOLERANCE（用于泛洪填充起点的背景颜色容差阈值），
-  或核对 ROWS 中配置的总帧数是否与图表完全吻合。
-- MERGE_MAX_GAP 控制碎小连通块（如投影、碎杂点）与主体帧的最大合并距离像素值。
-- PADDING 用于在裁剪前为每个动作帧外扩若干像素内边距，防止平滑边缘或猫胡须被截断。
-- 依赖项：numpy, scipy 以及 Pillow（安装命令：pip install numpy scipy pillow）。
+- If detection finds the wrong number of blobs, adjust FLOOD_TOLERANCE
+  (how close a pixel must be to the background color to seed the
+  flood fill) or check ROWS frame counts add up to the true total.
+- MERGE_MAX_GAP controls how far away a small extra blob (like a
+  shadow) can be from a main frame and still get merged into it.
+- PADDING adds a few extra pixels around each detected frame before
+  cropping, in case anti-aliased edges get clipped too tight.
+- Requires numpy, scipy and Pillow (pip install numpy scipy pillow).
 """
 
 from pathlib import Path
@@ -54,21 +72,15 @@ import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
 
-# 确保在 Windows 控制台环境下输出中文字符不发生编码错误
-if hasattr(sys.stdout, "reconfigure"):
-    getattr(sys.stdout, "reconfigure")(encoding="utf-8", errors="replace")
-if hasattr(sys.stderr, "reconfigure"):
-    getattr(sys.stderr, "reconfigure")(encoding="utf-8", errors="replace")
-
 # ==================================================================
-# 配置区域（CONFIG） -- 请根据你的精灵图表修改以下参数
+# CONFIG -- edit this block for your sprite sheet
 # ==================================================================
 
 SHEET_PATH = "sprite_sheet.png"
 SUBJECT = "pet"
 OUTPUT_ROOT = "assets"
 
-# 每一行动画对应一项，严格按照图表上【从上到下】的顺序排列。
+# One entry per row, TOP TO BOTTOM as it appears on the sheet.
 ROWS = [
     {"name": "idle",  "frames": 4},
     {"name": "walk",  "frames": 4},
@@ -77,47 +89,50 @@ ROWS = [
     {"name": "eat",   "frames": 4},
 ]
 
-# 要移除的背景颜色。"auto" 表示自动采样左上角像素颜色。
+# Background color to remove. "auto" samples the top-left pixel.
 BG_COLOR = "auto"
 
-# 边缘背景泛洪填充的颜色距离容差阈值。
-# 只有颜色距离在此阈值以内、且与图片外边缘连通的像素才会被判定为背景移除；
-# 角色内部闭合区域即使颜色与背景相近，也不会被误删。
+# Color-distance tolerance for seeding the background flood fill.
+# Only pixels this close to BG_COLOR *and* connected to the sheet's
+# outer edge are removed -- enclosed light fur/highlights are safe
+# even if their color is close to this.
 FLOOD_TOLERANCE = 20
 
-# 边缘平滑羽化容差：处于边界处、且颜色与背景接近的像素将获得渐变 Alpha 透明度，
-# 从而实现边缘平滑过渡，避免出现生硬锯齿。
+# Soft edge feathering: pixels within this color distance of the
+# background, sitting right at the boundary, get partial alpha for a
+# smooth (non-jagged) edge instead of a hard cutout.
 FEATHER_TOLERANCE = 60
 FEATHER_DILATE_PX = 3
 
-# 每个检测框在裁切前额外扩展的外边距像素（有助于避免切断边缘抗锯齿区域或细小毛发）。
+# Extra pixels of padding added around each detected frame's box
+# before cropping (helps avoid clipping whiskers/anti-aliased edges).
 PADDING = 4
 
-# 与主帧距离在此像素范围内的小碎块（例如跳跃动作下方的投影阴影）
-# 会自动合并到该主帧中，而不会被当作杂点丢弃或误判为单独一帧。
+# Small nearby blobs (e.g. a drop-shadow under a jump pose) within
+# this many pixels of a detected frame get merged into that frame
+# instead of being discarded as noise or treated as their own frame.
 MERGE_MAX_GAP = 40
 
-# 自动跳过最终完全透明的空白帧。
+# Drop frames that end up fully transparent.
 SKIP_BLANK_FRAMES = True
 
 FRAME_NAME_PADDING = 2
 
 # ==================================================================
-# 核心实现逻辑 -- 以下内容通常无需修改
+# IMPLEMENTATION -- shouldn't need to edit below this line
 # ==================================================================
 
 
 def get_bg_color(arr):
-    """获取背景颜色基准值。"""
     if BG_COLOR != "auto":
         return np.array(BG_COLOR, dtype=float)
     corner = arr[0, 0].astype(float)
-    print(f"[自动采样] 从左上角采样背景颜色: {tuple(corner.astype(int))}")
+    print(f"[auto] sampled background color from top-left corner: {tuple(corner.astype(int))}")
     return corner
 
 
 def remove_background(arr, bg_color):
-    """arr: 高x宽x3 的 uint8 RGB numpy 数组。返回: 高x宽x4 的 uint8 RGBA 数组及前景掩码。"""
+    """arr: HxWx3 uint8 RGB numpy array. Returns HxWx4 uint8 RGBA array."""
     dist = np.sqrt(((arr.astype(float) - bg_color) ** 2).sum(axis=2))
 
     hardmask = dist <= FLOOD_TOLERANCE
@@ -138,8 +153,8 @@ def remove_background(arr, bg_color):
 
 
 def detect_frames(fg_mask, total_frames):
-    """检测 `total_frames` 个主要前景连通块，并将附近的小连通块（如投影阴影等）
-    智能合并到最近的主块中。返回各帧的边界框列表 [(左, 上, 右, 下), ...]"""
+    """Find `total_frames` main blobs plus merge small nearby blobs (shadows etc)
+    into their nearest main blob. Returns list of (left, top, right, bottom)."""
     lbl, n = ndimage.label(fg_mask, structure=np.ones((3, 3)))  # type: ignore[misc]
     if n == 0:
         return []
@@ -155,11 +170,11 @@ def detect_frames(fg_mask, total_frames):
         ys, xs = np.where(lbl == i)
         boxes[i] = [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
 
-    # 将附近的碎小连通块（阴影、游离像素）合并到距离最近的主帧框中
+    # merge small extra blobs (shadows, stray marks) into nearest main box
     for i in extra_ids:
         ys, xs = np.where(lbl == i)
         if len(xs) < 30:
-            continue  # 忽略微小噪点杂色
+            continue  # pure noise speck, ignore
         ex_box = [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]
 
         best, best_dist = None, None
@@ -180,8 +195,8 @@ def detect_frames(fg_mask, total_frames):
 
 
 def assign_rows(boxes, rows_cfg):
-    """根据 rows_cfg 中的帧数设定，先按从上到下将边界框归类为各行，
-    再在每一行动画内部按从左到右进行排列。"""
+    """Sort boxes top-to-bottom into rows per rows_cfg frame counts, then
+    left-to-right within each row."""
     boxes = sorted(boxes, key=lambda b: (b[1] + b[3]) / 2)
     result = []
     idx = 0
@@ -192,40 +207,39 @@ def assign_rows(boxes, rows_cfg):
         chunk.sort(key=lambda b: (b[0] + b[2]) / 2)
         result.append((str(row_cfg["name"]), chunk))
     if idx != len(boxes):
-        print(f"警告: 检测到 {len(boxes)} 个帧区域，但 ROWS 配置的总帧数为 "
-              f"{sum(int(r['frames']) for r in rows_cfg)}。请检查并调整 ROWS 或 FLOOD_TOLERANCE。")
+        print(f"WARNING: detected {len(boxes)} frames but ROWS config totals "
+              f"{sum(int(r['frames']) for r in rows_cfg)}. Adjust ROWS or FLOOD_TOLERANCE.")
     return result
 
 
 def pad_box(box, w, h):
-    """为边界框添加内边距并限制在图像宽高范围内。"""
     l, t, r, b = box
     return (max(0, l - PADDING), max(0, t - PADDING),
             min(w, r + PADDING), min(h, b + PADDING))
 
 
 def main():
-    parser = argparse.ArgumentParser(description="将精灵图表（Sprite Sheet）自动切分为独立的动画序列帧。")
-    parser.add_argument("--preview", action="store_true", help="生成带检测边框的预览网格图，而不执行实际切图提取。")
-    parser.add_argument("--sheet", default=SHEET_PATH, help="精灵图表文件的路径。")
+    parser = argparse.ArgumentParser(description="Slice a sprite sheet into animation frames.")
+    parser.add_argument("--preview", action="store_true", help="Write a detection-overlay preview instead of extracting.")
+    parser.add_argument("--sheet", default=SHEET_PATH, help="Path to the sprite sheet image.")
     args = parser.parse_args()
 
     sheet_path = Path(args.sheet)
     if not sheet_path.exists():
-        print(f"错误: 未找到精灵图表文件 '{sheet_path}'。")
+        print(f"ERROR: sprite sheet not found at '{sheet_path}'.")
         sys.exit(1)
 
     img = Image.open(sheet_path).convert("RGB")
     arr = np.array(img)
     h, w = arr.shape[:2]
     total_frames = sum(int(r["frames"]) for r in ROWS)
-    print(f"图表尺寸: {w}x{h}  |  配置行数: {len(ROWS)}  |  预期总帧数: {total_frames}")
+    print(f"Sheet size: {w}x{h}  |  rows configured: {len(ROWS)}  |  total frames expected: {total_frames}")
 
     bg_color = get_bg_color(arr)
     rgba, fg_mask = remove_background(arr, bg_color)
 
     boxes = detect_frames(fg_mask, total_frames)
-    print(f"已检测到 {len(boxes)} 个动画帧连通区域。")
+    print(f"Detected {len(boxes)} frame blob(s).")
 
     rows = assign_rows(boxes, ROWS)
 
@@ -239,7 +253,8 @@ def main():
                 draw.text((pb[0] + 4, pb[1] + 4), f"{name} {i}", fill=(255, 0, 0, 255))
         out_path = sheet_path.with_name("preview_grid.png")
         preview.save(out_path)
-        print(f"预览图已保存至 {out_path} -- 在运行正式提取之前，请先确认每个动作帧均有且仅有一个红框标识。")
+        print(f"Preview written to {out_path} -- check every frame has exactly one "
+              f"labeled box before running the real extraction.")
         return
 
     root = Path(OUTPUT_ROOT) / SUBJECT
@@ -258,9 +273,9 @@ def main():
             count += 1
             fname = f"{count:0{FRAME_NAME_PADDING}d}.png"
             frame.save(out_dir / fname)
-        print(f"  {name}: {count} 帧 -> {out_dir}/")
+        print(f"  {name}: {count} frames -> {out_dir}/")
 
-    print(f"\n提取完成。所有动画帧已保存至 {root}/")
+    print(f"\nDone. Frames written under {root}/")
 
 
 if __name__ == "__main__":
