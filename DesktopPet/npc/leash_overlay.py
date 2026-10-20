@@ -22,6 +22,11 @@ except ImportError:
 import themes
 import sound_manager
 
+try:
+    from combo_counter import ComboCounter
+except ImportError:
+    from core.combo_counter import ComboCounter
+
 CHROMA = "#020202"
 WHIP_CRACK_SOUND = sound_manager.WHIP_CRACK_SOUND
 SOUND_FILE = WHIP_CRACK_SOUND  # Backward compatibility
@@ -82,6 +87,9 @@ class LeashOverlay:
         self._prev_l_down: bool = True
         self._prev_r_down: bool = True
         self._prev_esc_down: bool = False
+
+        # Arcade combo counter
+        self.combo_counter = ComboCounter()
 
         # Multi-node Verlet physics chain
         self.nodes: list[WhipNode] = [WhipNode(0.0, 0.0) for _ in range(NUM_NODES)]
@@ -145,6 +153,7 @@ class LeashOverlay:
         self._prev_mx = self.mouse_x
         self._prev_my = self.mouse_y
 
+        self.combo_counter.reset()
         self._init_whip_nodes(self.mouse_x, self.mouse_y)
         self._start_physics_loop()
 
@@ -166,6 +175,7 @@ class LeashOverlay:
                 pass
             self._physics_timer = None
         sound_manager.stop_all()
+        self.combo_counter.reset()
         self.canvas.delete("all")
         self.win.withdraw()
         if self.on_close:
@@ -187,6 +197,14 @@ class LeashOverlay:
         if not self.animating:
             self._update_physics()
             self._redraw_idle()
+
+        # Update combo counter state & tracking
+        if self.get_pet_rect_fn:
+            try:
+                self.last_pet_rect = self.get_pet_rect_fn()
+            except Exception:
+                pass
+        self.combo_counter.update(0.018, pet_rect=self.last_pet_rect)
 
         # ~55 FPS smooth physics loop
         self._physics_timer = self.win.after(18, self._start_physics_loop)
@@ -347,6 +365,9 @@ class LeashOverlay:
         if is_hit and self.on_hit:
             self.on_hit(target_x, target_y, origin_x, origin_y)
 
+        if is_hit:
+            self.combo_counter.register_hit(target_x, target_y, pet_rect=self.last_pet_rect)
+
         # Animation sequence:
         # Phase 0: Rear high-tension windup (0ms)
         self._draw_crack_phase(origin_x, origin_y, target_x, target_y, phase=0, is_hit=is_hit)
@@ -413,10 +434,15 @@ class LeashOverlay:
             pill_x1, pill_y1, pill_x2, pill_y2,
             fill=bg_bar, outline=accent, width=1.5
         )
+        hud_text = "🤠 WHIP ACTIVE — Left-Click anywhere to Whip Pet! • Right-Click / ESC to Exit"
+        if self.combo_counter.combo > 0:
+            hits_word = "HIT" if self.combo_counter.combo == 1 else "HITS"
+            hud_text = f"🤠 WHIP ACTIVE — Combo: {self.combo_counter.combo} {hits_word}! • Right-Click / ESC to Exit"
+
         self.canvas.create_text(
             pill_x1 + 14, (pill_y1 + pill_y2) // 2,
             anchor="w",
-            text="🤠 WHIP ACTIVE — Left-Click anywhere to Whip Pet! • Right-Click / ESC to Exit",
+            text=hud_text,
             fill="#ffffff", font=("Segoe UI", 9, "bold")
         )
         close_bx = pill_x2 - 25
@@ -529,6 +555,9 @@ class LeashOverlay:
             fill="#ffea00", outline="#d50000", width=1
         )
 
+        # Draw combo counter badge on top
+        self.combo_counter.draw(self.canvas)
+
     def _draw_crack_phase(self, mx: int, my: int, tx: int, ty: int, phase: int, is_hit: bool = True):
         """Draws the 4 animation phases of the whip strike directly onto the target/pet."""
         if not self.active:
@@ -600,6 +629,9 @@ class LeashOverlay:
                 [hx, hy, mid_x, mid_y, tip_x, tip_y],
                 smooth=True, width=3.4, fill="#4a2510", capstyle="round"
             )
+
+        # Draw combo counter badge on top of whip
+        self.combo_counter.draw(self.canvas)
 
 
 # Backwards compatibility alias
