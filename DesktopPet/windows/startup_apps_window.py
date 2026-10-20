@@ -32,7 +32,11 @@ def set_windows_autostart(enable: bool) -> bool:
         vbs_path = STARTUP_FOLDER / VBS_FILENAME
 
         if enable:
-            main_script = (Path(__file__).parent / "main.py").resolve()
+            try:
+                import paths
+                main_script = paths.MAIN_SCRIPT.resolve()
+            except ImportError:
+                main_script = (Path(__file__).resolve().parent.parent / "main.py").resolve()
             # Silent invisible launcher via Windows Script Host
             content = (
                 f'Set WshShell = CreateObject("WScript.Shell")\n'

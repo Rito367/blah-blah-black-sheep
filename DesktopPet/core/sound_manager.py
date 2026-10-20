@@ -22,7 +22,11 @@ from typing import Callable, Any
 
 import data_store
 
-ASSETS_DIR = Path(__file__).parent / "assets"
+try:
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+except ImportError:
+    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 WHIP_CRACK_SOUND = ASSETS_DIR / "whip_crack.wav"
 WHIP_HIT_SOUND = ASSETS_DIR / "whip_hit.wav"
 WHIP_HIT_TRIMMED = ASSETS_DIR / "whip_hit_trimmed.wav"

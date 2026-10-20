@@ -1,5 +1,9 @@
 {
   "extraPaths": [
-    "./DesktopPet"
+    "./DesktopPet",
+    "./DesktopPet/core",
+    "./DesktopPet/windows",
+    "./DesktopPet/npc",
+    "./DesktopPet/tools"
   ]
 }

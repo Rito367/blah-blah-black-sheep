@@ -24,7 +24,11 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+try:
+    import paths
+    PROJECT_ROOT = paths.PROJECT_ROOT
+except ImportError:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REQUIREMENTS_FILE = PROJECT_ROOT / "requirements.txt"
 
 # Known mapping between PyPI package names and their importable Python module names

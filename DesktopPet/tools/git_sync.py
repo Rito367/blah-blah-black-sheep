@@ -26,7 +26,11 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-PROJECT_ROOT = Path(__file__).parent
+try:
+    import paths
+    PROJECT_ROOT = paths.PROJECT_ROOT.parent
+except ImportError:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _git(args, timeout=15, check=False):

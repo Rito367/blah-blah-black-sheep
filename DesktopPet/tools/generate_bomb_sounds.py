@@ -10,7 +10,11 @@ import struct
 import random
 from pathlib import Path
 
-ASSETS_DIR = Path(__file__).parent / "assets"
+try:
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+except ImportError:
+    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 SAMPLE_RATE = 44100

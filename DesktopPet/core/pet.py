@@ -132,7 +132,11 @@ class PetWindow:
         self.get_data        = get_data
 
         if character_dir is None:
-            character_dir = Path(__file__).parent / "assets" / "pet"
+            try:
+                import paths
+                character_dir = paths.ASSETS_DIR / "pet"
+            except ImportError:
+                character_dir = Path(__file__).resolve().parent.parent / "assets" / "pet"
         self._char_dir = character_dir
 
         self.raw_frames: dict[str, list[Image.Image]] = {}

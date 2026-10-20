@@ -14,8 +14,19 @@ from PIL import Image
 import numpy as np
 
 # ── config ────────────────────────────────────────────────────────────────
-SHEET_PATH  = Path("minikaijie_spritesheet.jpeg")
-OUTPUT_DIR  = Path("assets") / "mini kaijie"
+try:
+    import paths
+    _BASE = paths.PROJECT_ROOT
+except ImportError:
+    _BASE = Path(__file__).resolve().parent.parent
+
+_SHEET_CANDIDATES = [
+    _BASE / "assets" / "spritesheets" / "minikaijie_spritesheet.jpeg",
+    _BASE / "minikaijie_spritesheet.jpeg",
+    Path("minikaijie_spritesheet.jpeg")
+]
+SHEET_PATH = next((p for p in _SHEET_CANDIDATES if p.exists()), _SHEET_CANDIDATES[0])
+OUTPUT_DIR = _BASE / "assets" / "mini kaijie"
 ANIM_ORDER  = ["idle", "walk", "jump", "sleep", "eat"]
 COLS        = 4
 ROWS        = 5

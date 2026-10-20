@@ -8,7 +8,11 @@ from tkinter import messagebox
 from pathlib import Path
 import themes
 
-ASSETS_DIR = Path(__file__).parent / "assets"
+try:
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+except ImportError:
+    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 
 class RenameCharacterWindow:

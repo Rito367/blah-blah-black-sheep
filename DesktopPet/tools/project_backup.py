@@ -9,7 +9,11 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 
-PROJECT_ROOT = Path(__file__).parent
+try:
+    import paths
+    PROJECT_ROOT = paths.PROJECT_ROOT
+except ImportError:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKUP_ARCHIVE_DIR = PROJECT_ROOT / "project_snapshots"
 
 INCLUDE_EXTENSIONS = {".py", ".json", ".png", ".jpg", ".jpeg", ".txt", ".md", ".bat"}

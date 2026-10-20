@@ -11,8 +11,13 @@ from pathlib import Path
 
 from datetime import datetime
 
-DATA_FILE = Path(__file__).parent / "pet_data.json"
-BACKUP_DIR = Path(__file__).parent / ".backups"
+try:
+    import paths
+    DATA_FILE = paths.DATA_FILE
+    BACKUP_DIR = paths.BACKUP_DIR
+except ImportError:
+    DATA_FILE = Path(__file__).resolve().parent.parent / "pet_data.json"
+    BACKUP_DIR = Path(__file__).resolve().parent.parent / ".backups"
 
 _defaults = {
     "custom_theme": {},

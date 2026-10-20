@@ -47,7 +47,11 @@ if "!PYTHON_EXE!"=="" (
 )
 
 :: 2. Auto-verify dependencies in background
-"!PYTHON_EXE!" setup_and_run.py --no-launch >nul 2>&1
+if exist "tools\setup_and_run.py" (
+    "!PYTHON_EXE!" tools\setup_and_run.py --no-launch >nul 2>&1
+) else if exist "setup_and_run.py" (
+    "!PYTHON_EXE!" setup_and_run.py --no-launch >nul 2>&1
+)
 
 :: 3. Launch main.py directly
 set "PYTHONW_EXE=!PYTHON_EXE:python.exe=pythonw.exe!"

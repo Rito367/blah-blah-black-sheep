@@ -161,7 +161,11 @@ class SpriteCutterWindow:
             messagebox.showerror("Error", "Please provide a character name.", parent=parent_win)
             return
 
-        assets_dir = Path(__file__).parent / "assets"
+        try:
+            import paths
+            assets_dir = paths.ASSETS_DIR
+        except ImportError:
+            assets_dir = Path(__file__).resolve().parent.parent / "assets"
         char_dir = assets_dir / char_name
         target_anim_dir = char_dir / anim_name
         target_anim_dir.mkdir(parents=True, exist_ok=True)

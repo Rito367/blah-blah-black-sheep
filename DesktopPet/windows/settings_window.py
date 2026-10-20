@@ -17,7 +17,11 @@ import sound_manager
 from speech_bubble import BUBBLE_FONTS, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE
 from themes import THEME_KEYS, THEME_KEY_LABELS
 
-ASSETS_DIR = Path(__file__).parent / "assets"
+try:
+    import paths
+    ASSETS_DIR = paths.ASSETS_DIR
+except ImportError:
+    ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 BASE_SPRITE_SIZE = 60
 PET_PREVIEW_SIZE = 120
 

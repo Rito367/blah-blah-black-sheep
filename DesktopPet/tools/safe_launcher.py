@@ -24,7 +24,11 @@ GITHUB_BRANCH = "main"
 GITHUB_TOKEN = os.environ.get("GITHUB_PAT", "")
 
 # Hidden directory for crash copies (keeps root folder clean)
-PROJECT_DIR = Path(__file__).parent
+try:
+    import paths
+    PROJECT_DIR = paths.PROJECT_ROOT
+except ImportError:
+    PROJECT_DIR = Path(__file__).resolve().parent.parent
 BROKEN_DIR = PROJECT_DIR / ".broken_backups"
 
 TRACKED_FILES = [

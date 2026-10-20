@@ -124,8 +124,11 @@ class NPCWalkerWindow:
             self._build_window()
 
     def reload_assets(self):
-        """Loads animation frames from custom dir if present, else default."""
-        base_path = Path(__file__).parent / "assets" / "npc"
+        try:
+            import paths
+            base_path = paths.ASSETS_DIR / "npc"
+        except ImportError:
+            base_path = Path(__file__).resolve().parent.parent / "assets" / "npc"
         custom_dir = base_path / "custom"
         default_dir = base_path / "default"
 

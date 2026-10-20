@@ -20,6 +20,12 @@ from PIL import Image, ImageTk, ImageOps
 import themes
 import npc_graphics
 
+try:
+    import paths
+    NPC_ASSETS_DIR = paths.ASSETS_DIR / "npc"
+except ImportError:
+    NPC_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets" / "npc"
+
 # Supported image file extensions
 IMAGE_EXTENSIONS = [
     ("Image Files", "*.png;*.jpg;*.jpeg;*.webp;*.bmp"),
@@ -154,7 +160,7 @@ class NPCCustomizerWindow:
         self.win.protocol("WM_DELETE_WINDOW", self.hide)
 
         # Load saved custom head if exists
-        custom_face_path = Path(__file__).parent / "assets" / "npc" / "custom_face.png"
+        custom_face_path = NPC_ASSETS_DIR / "custom_face.png"
         if custom_face_path.exists():
             try:
                 self.cropped_head_img = Image.open(custom_face_path).convert("RGBA")
@@ -165,7 +171,7 @@ class NPCCustomizerWindow:
             self.cropped_head_img = npc_graphics.create_default_face(60)
 
         # Load custom shirt if exists
-        custom_shirt_path = Path(__file__).parent / "assets" / "npc" / "custom_shirt.png"
+        custom_shirt_path = NPC_ASSETS_DIR / "custom_shirt.png"
         if custom_shirt_path.exists():
             try:
                 self.custom_shirt_img = Image.open(custom_shirt_path).convert("RGBA")
@@ -600,7 +606,7 @@ class NPCCustomizerWindow:
 
     def _clear_shirt_graphic(self):
         self.custom_shirt_img = None
-        custom_shirt_path = Path(__file__).parent / "assets" / "npc" / "custom_shirt.png"
+        custom_shirt_path = NPC_ASSETS_DIR / "custom_shirt.png"
         if custom_shirt_path.exists():
             try:
                 custom_shirt_path.unlink()
@@ -793,17 +799,17 @@ class NPCCustomizerWindow:
     # ── SAVE & LAUNCH ─────────────────────────────────────────────────────────
     def _save_and_start(self):
         try:
-            custom_dir = Path(__file__).parent / "assets" / "npc" / "custom"
+            custom_dir = NPC_ASSETS_DIR / "custom"
             head = self.cropped_head_img if self.cropped_head_img is not None else npc_graphics.create_default_face(60)
 
             # Save head and custom shirt image
             if self.cropped_head_img is not None:
-                head_path = Path(__file__).parent / "assets" / "npc" / "custom_face.png"
+                head_path = NPC_ASSETS_DIR / "custom_face.png"
                 head_path.parent.mkdir(parents=True, exist_ok=True)
                 self.cropped_head_img.save(head_path, "PNG")
 
             if self.custom_shirt_img is not None:
-                shirt_path = Path(__file__).parent / "assets" / "npc" / "custom_shirt.png"
+                shirt_path = NPC_ASSETS_DIR / "custom_shirt.png"
                 shirt_path.parent.mkdir(parents=True, exist_ok=True)
                 self.custom_shirt_img.save(shirt_path, "PNG")
 
