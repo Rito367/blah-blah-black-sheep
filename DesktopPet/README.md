@@ -1,20 +1,29 @@
 # 🐾 Desktop Pet Companion (Hais Edition)
 
-> An always-on-screen, physics-enabled interactive desktop pet companion for Windows. Complete with productivity tools (timers, calendar, reminders), minigames (Tic-Tac-Toe, Chopsticks), sprite utilities, and silent 1-click GitHub cloud save.
+> Please refer to the main [Repository README](../README.md) for full project documentation, interactive physics guides, and screenshots.
 
 ---
 
 ## ⚡ Quick Start
 
 ### 1. Launch Instantly (No Terminal Needed!)
-You can launch the pet anytime in 3 convenient ways:
+You can launch the pet anytime using any of the following methods:
 
-* **Windows Start Search**: Press `Win`, type **`run_pet`**, and press `Enter`.
-* **Windows Run**: Press `Win + R`, type **`run_pet`**, and press `Enter`.
-* **Desktop Shortcut**: Double-click the **`run_pet`** icon on your Desktop.
-* **1-Click Batch**: Double-click [`run_pet.bat`](file:///c:/Users/Ben%20Ong/OneDrive/Pictures/Documents/PET/desktop-pet-hais-f8b3a7562868f8ffe17ce41d990fe1cb8fb73d4f/DesktopPet/run_pet.bat).
+* **1-Click Batch**: Double-click [`run_pet.bat`](run_pet.bat)
+* **Windows Run**: Press <kbd>Win</kbd> + <kbd>R</kbd>, type `run_pet`, and hit <kbd>Enter</kbd> (after setup)
+* **Desktop Shortcut**: Double-click the `run_pet` shortcut on your Desktop
 
-> Missing dependencies? [`run_pet.bat`](file:///c:/Users/Ben%20Ong/OneDrive/Pictures/Documents/PET/desktop-pet-hais-f8b3a7562868f8ffe17ce41d990fe1cb8fb73d4f/DesktopPet/run_pet.bat) automatically checks Python and installs all required packages (`Pillow`, `pystray`, `keyboard`, `numpy`, `scipy`, `pywin32`, `tzdata`) on first run.
+> [!TIP]
+> **Automatic Dependency Installation**: [`run_pet.bat`](run_pet.bat) automatically checks Python and installs all required packages (`Pillow`, `pystray`, `keyboard`, `numpy`, `scipy`, `pywin32`, `tzdata`) on first launch!
+
+### 2. Manual Terminal Launch
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run main application
+python main.py
+```
 
 ---
 
@@ -60,46 +69,8 @@ You can launch the pet anytime in 3 convenient ways:
   - Allows custom version naming (e.g. `Release V2.0`, `Stable checkpoint`).
   - Automatically records commit checkpoints even without code changes.
   - **100% Windowless & Silent**: Runs without flashing console or terminal popups.
-* **🛟 Safe Launcher & Auto-Recovery**: [`safe_launcher.py`](file:///c:/Users/Ben%20Ong/OneDrive/Pictures/Documents/PET/desktop-pet-hais-f8b3a7562868f8ffe17ce41d990fe1cb8fb73d4f/DesktopPet/safe_launcher.py) backs up broken files into `.broken_backups/` and pulls clean versions from GitHub if a crash occurs.
+* **🛟 Safe Launcher & Auto-Recovery**: [`tools/safe_launcher.py`](tools/safe_launcher.py) backs up broken files into `.broken_backups/` and pulls clean versions from GitHub if a crash occurs.
 * **📦 Local Zip Backup**: Instantly bundles full project snapshots inside `.backups/`.
-
----
-
-## 📁 Project Architecture
-
-```
-DesktopPet/
-├── main.py                     # Main application entry point & GUI loop
-├── pet.py                      # Pet sprite engine, state machine & physics
-├── speech_bubble.py            # Comic speech bubble rendering
-├── data_store.py               # Persistent JSON configuration store
-├── themes.py                   # 9 Color palettes & dynamic widget theming
-├── git_sync.py                 # Silent background GitHub cloud sync
-├── safe_launcher.py            # Crash isolation & automatic GitHub restore
-├── setup_and_run.py            # Auto-installer & shortcut bootstrapper
-├── run_pet.bat                 # 1-click batch launcher (silent pythonw)
-│
-├── calendar_window.py          # Calendar & daily event scheduler
-├── timer_window.py             # Countdown timer & stopwatch
-├── reminder_window.py          # Scheduled alarms & reminders
-├── settings_window.py          # Settings, theme picker & sliders
-├── decision_window.py          # Coin flip, dice roll & Magic 8-ball
-├── dialogue_window.py          # Speech bubble phrases manager
-├── weather_window.py           # Live weather forecasts & world time clocks
-├── rename_char_window.py       # Character rename dialog
-│
-├── tictactoe_window.py         # Tic-Tac-Toe minigame
-├── chopsticks_window.py        # Chopsticks finger math minigame
-├── sprite_cutter_window.py     # Interactive sprite sheet cutter
-├── leash_overlay.py            # Physics leash tether overlay
-├── hotkey_manager.py           # System-wide keyboard shortcut hooks
-├── tray_manager.py             # System tray icon & context menu
-│
-├── assets/                     # Character animation frames
-│   ├── pet/                    # Default cat frames (idle, walk, jump, sleep, eat)
-│   └── haiya/                  # Custom sprite character frames
-└── requirements.txt            # Python dependencies
-```
 
 ---
 
