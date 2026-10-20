@@ -1,0 +1,21 @@
+# Local pet settings (remove this line if you want settings backed up to GitHub)
+pet_data.json
+
+# Python bytecode cache
+__pycache__/
+*.py[cod]
+
+# Rolling data backups and project snapshots
+.backups/
+.code_backups/
+project_snapshots/
+
+# Crash snapshots and broken files
+.broken_backups/
+*.broken
+
+# Editors / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

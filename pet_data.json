@@ -1,0 +1,108 @@
+{
+  "countdown_events": [
+    {
+      "label": "Intern End",
+      "datetime": "2026-11-17 18:00:00"
+    }
+  ],
+  "active_event_index": 0,
+  "pet_position": [
+    2035,
+    1352
+  ],
+  "menu_scale": 1.3,
+  "theme": "dark",
+  "character": "haiya",
+  "walk_speed": 3,
+  "reminders": [
+    {
+      "time": "10:00",
+      "text": "DONT FORGET ABOUT THE DEAL ABT THE BOMB WITH ASHER ......!!!!!!!!!",
+      "enabled": true
+    },
+    {
+      "time": "18:00",
+      "text": "DONT FORGET TO DO DAILY REPORT",
+      "enabled": true
+    }
+  ],
+  "scale": 0.8,
+  "ttt_stats": {
+    "wins": 0,
+    "losses": 0,
+    "draws": 0
+  },
+  "gravity": 0.5,
+  "bounciness": 0.2,
+  "chatter_chance": 0.2,
+  "hide_hotkey": "alt+x",
+  "summon_hotkey": "alt+z",
+  "countdown_mode": "workdays",
+  "idle_messages": [
+    "Keep going, you're learning.",
+    "One step at a time.",
+    "Progress over perfection.",
+    "Learn, grow, improve.",
+    "You've got this.",
+    "Keep showing up.",
+    "Small steps still count.",
+    "Grow through the experience.",
+    "Do your best, learn the rest.",
+    "Every day is progress.",
+    "Jiayou! 加油！",
+    "Don't be stressed. ♡"
+  ],
+  "pat_messages": [
+    "♡ ♡ ♡",
+    "~(≧▽≦)/",
+    "( ˘ ³˘)♥"
+  ],
+  "sleep_messages": [
+    "z z z . . .",
+    "zzZZ 💤",
+    "z z z ♡"
+  ],
+  "eat_messages": [
+    "Yummy~ ♡",
+    "Yumz!",
+    "Nom nom ♡",
+    "So tasty~"
+  ],
+  "complain_messages": [
+    "I'm tired...",
+    "Too much walking!",
+    "My legs hurt!",
+    "Can we stop?",
+    "Whew... so far!",
+    "Slow down!"
+  ],
+  "opacity": 1.0,
+  "pet_opacity": 1.0,
+  "ui_opacity": 1.0,
+  "custom_menu_colors": {
+    "menu_bg": "#20222e",
+    "menu_fg": "#ffffff",
+    "menu_active_bg": "#2c2e3f",
+    "menu_active_fg": "#ffffff"
+  },
+  "custom_decisions": [
+    "Chicken Rice",
+    "Laksa",
+    "Subway",
+    "Ban Mian",
+    "Western"
+  ],
+  "coin_heads": "Yes / Go for it!",
+  "coin_tails": "No / Take a break!",
+  "d6_labels": [
+    "1: Study / Code",
+    "2: Workout / Stretch",
+    "3: Read Book",
+    "4: Play Game",
+    "5: Tidy Room",
+    "6: Free Choice"
+  ],
+  "d20_target_dc": 10,
+  "d20_pass_text": "Success! Proceed with task.",
+  "d20_fail_text": "Failed! Postpone or try alternate."
+}
