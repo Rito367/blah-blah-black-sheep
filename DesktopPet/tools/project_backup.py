@@ -66,7 +66,7 @@ def restore_previous_project_backup() -> bool:
             for member in zipf.namelist():
                 # Reject paths that escape the project directory
                 resolved = (PROJECT_ROOT / member).resolve()
-                if not str(resolved).startswith(str(PROJECT_ROOT.resolve())):
+                if not resolved.is_relative_to(PROJECT_ROOT.resolve()):
                     print(f"Skipping unsafe path in zip: {member}")
                     continue
                 zipf.extract(member, PROJECT_ROOT)

@@ -55,15 +55,18 @@ class LeashOverlay:
         self.is_muted_fn = is_muted_fn
         self.get_pet_rect_fn = get_pet_rect_fn
 
+        self.vx = 0
+        self.vy = 0
         self.sw = root.winfo_screenwidth()
         self.sh = root.winfo_screenheight()
+        self._update_screen_geometry()
 
         self.win = tk.Toplevel(root)
         self.win.overrideredirect(True)
         self.win.attributes("-topmost", True)
         self.win.attributes("-transparentcolor", CHROMA)
         self.win.configure(bg=CHROMA)
-        self.win.geometry(f"{self.sw}x{self.sh}+0+0")
+        self.win.geometry(f"{self.sw}x{self.sh}+{self.vx}+{self.vy}")
         self.win.withdraw()
 
         self.canvas = tk.Canvas(
@@ -74,9 +77,11 @@ class LeashOverlay:
 
         self.active: bool = False
         self.animating: bool = False
-        self._anim_timer: str | None = None
+        self._anim_timers: list[str] = []
+        self._anim_timer: str | None = None  # Backward compatibility
         self._physics_timer: str | None = None
         self._tick: int = 0
+        self._handle_angle: float = math.radians(30.0)
 
         self.last_pet_rect: tuple[int, int, int, int] | None = None
         self.mouse_x: int = self.sw // 2
@@ -101,9 +106,76 @@ class LeashOverlay:
         self.canvas.bind("<ButtonPress-3>", self._on_right_click)
         self.win.bind("<Escape>", lambda e: self.disable())
 
+    def _update_screen_geometry(self):
+        """Discovers virtual screen boundaries across multi-monitor setups on Windows."""
+        try:
+            import ctypes
+            u = ctypes.windll.user32
+            vx = u.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
+            vy = u.GetSystemMetrics(77)  # SM_YVIRTUALSCREEN
+            vw = u.GetSystemMetrics(78)  # SM_CXVIRTUALSCREEN
+            vh = u.GetSystemMetrics(79)  # SM_CYVIRTUALSCREEN
+            if vw > 0 and vh > 0:
+                self.vx = vx
+                self.vy = vy
+                self.sw = vw
+                self.sh = vh
+                return
+        except Exception:
+            pass
+        self.vx = 0
+        self.vy = 0
+        try:
+            self.sw = self.root.winfo_screenwidth()
+            self.sh = self.root.winfo_screenheight()
+        except Exception:
+            pass
+
+    def _get_screen_cursor(self) -> tuple[int, int]:
+        """Queries the true OS pointer coordinates, converting them to canvas space."""
+        try:
+            import ctypes
+            class POINT(ctypes.Structure):
+                _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+            pt = POINT()
+            if ctypes.windll.user32.GetCursorPos(ctypes.byref(pt)):
+                cx = int(pt.x - getattr(self, "vx", 0))
+                cy = int(pt.y - getattr(self, "vy", 0))
+                return cx, cy
+        except Exception:
+            pass
+
+        try:
+            cx = self.win.winfo_pointerx()
+            cy = self.win.winfo_pointery()
+            if 0 <= cx <= self.sw + 500 and 0 <= cy <= self.sh + 500:
+                return cx, cy
+        except Exception:
+            pass
+
+        return self.mouse_x, self.mouse_y
+
+    def _make_click_through(self, toplevel: tk.Toplevel):
+        """Enables WS_EX_TRANSPARENT on the top-level OS window so mouse clicks pass through without corrupting child widgets."""
+        try:
+            import ctypes
+            toplevel.update_idletasks()
+            hwnd = ctypes.windll.user32.GetParent(toplevel.winfo_id())
+            if not hwnd:
+                hwnd = toplevel.winfo_id()
+            GWL_EXSTYLE = -20
+            WS_EX_LAYERED = 0x00080000
+            WS_EX_TRANSPARENT = 0x00000020
+            get_fn = getattr(ctypes.windll.user32, "GetWindowLongPtrW", ctypes.windll.user32.GetWindowLongW)
+            set_fn = getattr(ctypes.windll.user32, "SetWindowLongPtrW", ctypes.windll.user32.SetWindowLongW)
+            style = get_fn(hwnd, GWL_EXSTYLE)
+            set_fn(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED | WS_EX_TRANSPARENT)
+        except Exception:
+            pass
+
     def _init_whip_nodes(self, mx: int, my: int):
         """Initializes whip joints in a natural, realistic handheld hanging drape."""
-        handle_angle = math.radians(30.0)
+        handle_angle = getattr(self, "_handle_angle", math.radians(30.0))
         handle_len = 36.0
         hx = mx + (handle_len - 6.0) * math.cos(handle_angle)
         hy = my + (handle_len - 6.0) * math.sin(handle_angle)
@@ -136,25 +208,27 @@ class LeashOverlay:
         self._prev_l_down = True  # prevent accidental click trigger from the button press
         self._prev_r_down = True
         self._prev_esc_down = False
+
+        self._update_screen_geometry()
+        self.win.geometry(f"{self.sw}x{self.sh}+{self.vx}+{self.vy}")
+        self.canvas.config(width=self.sw, height=self.sh)
+
         self.win.deiconify()
+        self.win.attributes("-topmost", True)
         self.win.lift()
-        self.win.focus_force()
+        self._make_click_through(self.win)
 
-        # Update initial cursor position
-        try:
-            cur_x = self.win.winfo_pointerx()
-            cur_y = self.win.winfo_pointery()
-            if 0 <= cur_x <= self.sw and 0 <= cur_y <= self.sh:
-                self.mouse_x = cur_x
-                self.mouse_y = cur_y
-        except Exception:
-            pass
-
-        self._prev_mx = self.mouse_x
-        self._prev_my = self.mouse_y
+        # Update cursor position to true mouse coordinates immediately
+        mx, my = self._get_screen_cursor()
+        self.mouse_x = mx
+        self.mouse_y = my
+        self._prev_mx = mx
+        self._prev_my = my
 
         self.combo_counter.reset()
         self._init_whip_nodes(self.mouse_x, self.mouse_y)
+        self._redraw_idle()
+        self.win.update_idletasks()
         self._start_physics_loop()
 
     def disable(self):
@@ -162,12 +236,7 @@ class LeashOverlay:
             return
         self.active = False
         self.animating = False
-        if self._anim_timer:
-            try:
-                self.win.after_cancel(self._anim_timer)
-            except Exception:
-                pass
-            self._anim_timer = None
+        self._clear_anim_timers()
         if self._physics_timer:
             try:
                 self.win.after_cancel(self._physics_timer)
@@ -180,6 +249,20 @@ class LeashOverlay:
         self.win.withdraw()
         if self.on_close:
             self.on_close()
+
+    def _clear_anim_timers(self):
+        for tid in self._anim_timers:
+            try:
+                self.win.after_cancel(tid)
+            except Exception:
+                pass
+        self._anim_timers.clear()
+        if self._anim_timer:
+            try:
+                self.win.after_cancel(self._anim_timer)
+            except Exception:
+                pass
+            self._anim_timer = None
 
     def update_pet_rect(self, pet_x: int, pet_y: int, pet_w: int, pet_h: int):
         """Stores pet coordinates for whip strike targeting."""
@@ -194,8 +277,8 @@ class LeashOverlay:
         if not self.active:
             return
 
+        self._update_physics()
         if not self.animating:
-            self._update_physics()
             self._redraw_idle()
 
         # Update combo counter state & tracking
@@ -206,23 +289,23 @@ class LeashOverlay:
                 pass
         self.combo_counter.update(0.018, pet_rect=self.last_pet_rect)
 
+        # Periodically ensure overlay remains topmost
+        if self._tick % 60 == 0:
+            try:
+                self.win.attributes("-topmost", True)
+            except Exception:
+                pass
+
         # ~55 FPS smooth physics loop
         self._physics_timer = self.win.after(18, self._start_physics_loop)
 
     def _update_physics(self):
         self._tick += 1
 
-        # Query live system pointer position so whip reliably follows cursor anywhere on screen
-        try:
-            cur_x = self.win.winfo_pointerx()
-            cur_y = self.win.winfo_pointery()
-            if -100 <= cur_x <= self.sw + 100 and -100 <= cur_y <= self.sh + 100:
-                self.mouse_x = cur_x
-                self.mouse_y = cur_y
-        except Exception:
-            pass
-
-        mx, my = self.mouse_x, self.mouse_y
+        # Live system pointer position query
+        mx, my = self._get_screen_cursor()
+        self.mouse_x = mx
+        self.mouse_y = my
 
         # Subtly tilt handle with cursor horizontal momentum
         cursor_vx = (mx - self._prev_mx)
@@ -255,6 +338,7 @@ class LeashOverlay:
 
         dynamic_tilt = max(-0.25, min(0.25, cursor_vx * 0.015))
         handle_angle = math.radians(30.0) + dynamic_tilt
+        self._handle_angle = handle_angle
         handle_len = 36.0
         hx = mx + (handle_len - 6.0) * math.cos(handle_angle)
         hy = my + (handle_len - 6.0) * math.sin(handle_angle)
@@ -319,7 +403,7 @@ class LeashOverlay:
 
         # Check if user clicked the top HUD close button [✕]
         pill_cx = self.sw // 2
-        if pill_cx + 130 <= tx <= pill_cx + 200 and 10 <= ty <= 45:
+        if pill_cx + 160 <= tx <= pill_cx + 235 and 10 <= ty <= 46:
             self.disable()
             return
 
@@ -332,8 +416,10 @@ class LeashOverlay:
 
         if self.last_pet_rect is not None:
             px, py, pw, ph = self.last_pet_rect
-            strike_x = px + pw // 2
-            strike_y = py + ph // 3
+            vx = getattr(self, "vx", 0)
+            vy = getattr(self, "vy", 0)
+            strike_x = (px - vx) + pw // 2
+            strike_y = (py - vy) + ph // 3
         else:
             strike_x = tx
             strike_y = ty
@@ -347,11 +433,7 @@ class LeashOverlay:
             return
 
         self.animating = True
-        if self._anim_timer:
-            try:
-                self.win.after_cancel(self._anim_timer)
-            except Exception:
-                pass
+        self._clear_anim_timers()
 
         if origin_x is None:
             origin_x = self.mouse_x
@@ -374,28 +456,41 @@ class LeashOverlay:
 
         # Phase 1: High speed sonic wave across screen (25ms)
         def step1():
+            if not self.active:
+                return
             self._draw_crack_phase(origin_x, origin_y, target_x, target_y, phase=1, is_hit=is_hit)
 
         # Phase 2: Maximum supersonic impact + starburst sparks + text on pet (60ms)
         def step2():
+            if not self.active:
+                return
             self._draw_crack_phase(origin_x, origin_y, target_x, target_y, phase=2, is_hit=is_hit)
             if is_hit:
                 self._play_hit_sound()
 
         # Phase 3: Recoil ripple (125ms)
         def step3():
+            if not self.active:
+                return
             self._draw_crack_phase(origin_x, origin_y, target_x, target_y, phase=3, is_hit=is_hit)
 
         # Phase 4: Settle back smoothly to floating handheld physics pose (210ms)
         def step4():
+            if not self.active:
+                return
             self.animating = False
+            cur_mx, cur_my = self._get_screen_cursor()
+            self.mouse_x = cur_mx
+            self.mouse_y = cur_my
             self._init_whip_nodes(self.mouse_x, self.mouse_y)
             self._redraw_idle()
 
-        self.win.after(25, step1)
-        self.win.after(60, step2)
-        self.win.after(125, step3)
-        self._anim_timer = self.win.after(210, step4)
+        t1 = self.win.after(25, step1)
+        t2 = self.win.after(60, step2)
+        t3 = self.win.after(125, step3)
+        t4 = self.win.after(210, step4)
+        self._anim_timer = t4
+        self._anim_timers.extend([t1, t2, t3, t4])
 
     def _play_crack_sound(self):
         if self.is_muted_fn and self.is_muted_fn():
@@ -504,8 +599,8 @@ class LeashOverlay:
 
         mx, my = self.mouse_x, self.mouse_y
 
-        # Handle tilted forward-down ~30 degrees
-        handle_angle = math.radians(30.0)
+        # Handle tilted forward-down ~30 degrees + dynamic cursor momentum tilt
+        handle_angle = getattr(self, "_handle_angle", math.radians(30.0))
         self._draw_handle(mx, my, handle_angle)
 
         # Multi-tiered tapered braided whip curve through physics nodes

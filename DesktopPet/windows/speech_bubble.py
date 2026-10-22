@@ -40,10 +40,12 @@ DEFAULT_FONT_SIZE   = 8
 
 
 class SpeechBubble:
-    def __init__(self, root: tk.Tk, on_click=None):
+    def __init__(self, root: tk.Tk, on_click=None, get_pet_pos=None):
         self.root = root
         self.on_click = on_click
+        self.get_pet_pos = get_pet_pos
         self._after_id = None
+        self._track_timer = None
 
         self.win = tk.Toplevel(root)
         self.win.overrideredirect(True)
@@ -53,6 +55,9 @@ class SpeechBubble:
         self.win.withdraw()
 
         self._visible = False
+        self._bw = 60
+        self._bh = 40
+        self._pet_w = 60
 
     # ── show ─────────────────────────────────────────────────────────────
     def show(self, message: str, pet_x: int, pet_y: int, pet_w: int = 60):
@@ -65,7 +70,11 @@ class SpeechBubble:
         txt_fg  = t.get("bubble_fg")  or t.get("fg_main", "#333333")
 
         font_family = t.get("bubble_font_family") or DEFAULT_FONT_FAMILY
-        font_size   = int(t.get("bubble_font_size") or DEFAULT_FONT_SIZE)
+        raw_size = t.get("bubble_font_size")
+        try:
+            font_size = int(raw_size) if raw_size is not None and int(raw_size) > 0 else DEFAULT_FONT_SIZE
+        except (ValueError, TypeError):
+            font_size = DEFAULT_FONT_SIZE
         font_msg    = (font_family, font_size, "bold")
 
         for w in self.win.winfo_children():
@@ -90,6 +99,10 @@ class SpeechBubble:
 
         bw = max(tw, 60)
         bh = th + TAIL + 2
+
+        self._bw = bw
+        self._bh = bh
+        self._pet_w = pet_w
 
         canvas.config(width=bw, height=bh)
 
@@ -134,14 +147,7 @@ class SpeechBubble:
         self.win.bind("<Button-1>", _handle_click)
 
         self.win.update_idletasks()
-        x  = pet_x + pet_w // 2 - bw // 2
-        y  = pet_y - bh - 4
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        x  = max(4, min(x, sw - bw - 4))
-        y  = max(4, min(y, sh - bh - 4))
-
-        self.win.geometry(f"+{x}+{y}")
+        self.reposition(pet_x, pet_y, pet_w)
         try:
             self.win.lift()
             self.win.attributes("-topmost", True)
@@ -149,16 +155,81 @@ class SpeechBubble:
             pass
         self.win.deiconify()
         self._visible = True
+        self._start_tracking()
 
         # longer auto-hide for multi-word messages
         duration = max(AUTO_HIDE_MS, len(message) * 80)
         if self._after_id:
-            self.win.after_cancel(self._after_id)
+            try:
+                self.win.after_cancel(self._after_id)
+            except Exception:
+                pass
         self._after_id = self.win.after(duration, self.hide)
 
+    def reposition(self, pet_x: int, pet_y: int, pet_w: int | None = None):
+        """Updates bubble position so it stays directly above the moving pet."""
+        if not self.win.winfo_exists():
+            return
+        if pet_w is not None:
+            self._pet_w = pet_w
+        bw = getattr(self, "_bw", 60)
+        bh = getattr(self, "_bh", 40)
+        pw = getattr(self, "_pet_w", 60)
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+
+        x = pet_x + pw // 2 - bw // 2
+        y = pet_y - bh - 4
+        x = max(4, min(x, sw - bw - 4))
+        y = max(4, min(y, sh - bh - 4))
+        self.win.geometry(f"+{x}+{y}")
+
+    def _start_tracking(self):
+        self._cancel_tracking()
+        self._track_step()
+
+    def _track_step(self):
+        if not self._visible or not self.win.winfo_exists():
+            self._track_timer = None
+            return
+        if self.get_pet_pos:
+            try:
+                pos = self.get_pet_pos()
+                if pos:
+                    if len(pos) >= 3:
+                        self.reposition(pos[0], pos[1], pos[2])
+                    else:
+                        self.reposition(pos[0], pos[1])
+                else:
+                    self.hide()
+                    return
+            except Exception:
+                pass
+        self._track_timer = self.win.after(20, self._track_step)
+
+    def _cancel_tracking(self):
+        tid = getattr(self, "_track_timer", None)
+        if tid is not None:
+            try:
+                self.win.after_cancel(tid)
+            except Exception:
+                pass
+            self._track_timer = None
+
     def hide(self):
+        self._cancel_tracking()
+        if self._after_id:
+            try:
+                self.win.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
         self._visible = False
-        self.win.withdraw()
+        try:
+            if self.win.winfo_exists():
+                self.win.withdraw()
+        except Exception:
+            pass
 
     def apply_theme(self):
         """Re-show with current theme if visible — called on theme change."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from typing import Any
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageOps, ImageFont
 
 # Default base canvas dimensions for the walker sprite
 BASE_W, BASE_H = 100, 140
@@ -185,7 +185,14 @@ def draw_walker_body_frame(
         draw.line([(t_left + 3, torso_y + 20), (t_right - 3, torso_y + 20)], fill="#FFFFFF", width=2)
         draw.line([(t_left + 3, torso_y + 30), (t_right - 3, torso_y + 30)], fill="#FFFFFF", width=2)
     elif shirt_style == "Athletic Jersey":
-        draw.text((torso_cx - 4, torso_y + 12), "07", fill="#FFFFFF")
+        try:
+            jersey_font = ImageFont.truetype("arialbd.ttf", 9)
+        except Exception:
+            try:
+                jersey_font = ImageFont.truetype("segoeuib.ttf", 9)
+            except Exception:
+                jersey_font = ImageFont.load_default()
+        draw.text((torso_cx - 6, torso_y + 11), "07", fill="#FFFFFF", font=jersey_font)
 
     # Custom shirt graphic stamp
     if custom_shirt_img is not None:

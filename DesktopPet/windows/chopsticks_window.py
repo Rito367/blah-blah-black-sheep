@@ -225,7 +225,7 @@ class ChopsticksWindow:
             r = total - l
             if 0 <= r < 5:
                 if [l, r] != hands and [r, l] != hands:
-                    if (l, r) not in valid:
+                    if (l, r) not in valid and (r, l) not in valid:
                         valid.append((l, r))
         return valid
 

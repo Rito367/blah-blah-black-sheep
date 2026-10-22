@@ -103,7 +103,7 @@ def _run_git_save(commit_msg: str | None = None, on_complete=None):
             _git(["rebase", "--abort"], timeout=10)
             pull_merge = _git(["pull", "--no-rebase", "-X", "ours", "--no-edit"], timeout=30)
             if pull_merge.returncode != 0:
-                err = _short_error(pull, "Sync conflict")
+                err = _short_error(pull_merge, "Sync conflict")
                 done(False, f"Sync error: {err[:30]}")
                 return
 
@@ -141,9 +141,11 @@ def pull_from_github_async(on_complete=None):
 
         try:
             # Stash temporary uncommitted changes (like runtime pet coordinates)
-            _git(["stash"], timeout=15)
+            stash_res = _git(["stash"], timeout=15)
+            stashed = stash_res.returncode == 0 and "No local changes" not in (stash_res.stdout or "")
             pull = _git(["pull", "--no-rebase", "-X", "theirs", "--no-edit"], timeout=30)
-            _git(["stash", "pop"], timeout=10)
+            if stashed:
+                _git(["stash", "pop"], timeout=10)
 
             if pull.returncode == 0:
                 done(True, "📥 Updated from GitHub!")

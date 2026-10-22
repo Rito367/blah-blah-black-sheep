@@ -145,7 +145,7 @@ class DialogueWindow:
 
         tk.Button(
             btn_frame, text="Done", font=("Georgia", 8, "bold"),
-            bg=t.get("accent", "#e74c3c"), fg=t["fg_white"], relief="flat", command=self.win.destroy
+            bg=t.get("accent", "#e74c3c"), fg=t["fg_white"], relief="flat", command=self.hide
         ).pack(side="right", expand=True, fill="x", padx=(2, 0))
 
         self._refresh_list()

@@ -843,7 +843,10 @@ class WeatherWindow:
                 res, _ = fetch_weather_sync(city, unit)
                 if res:
                     self.cached_weather = res
-                    self.root.after(0, lambda: self._broadcast_bubble(res, self._selected_day_idx))
+                    try:
+                        self.root.after(0, lambda: self._broadcast_bubble(res, self._selected_day_idx))
+                    except Exception:
+                        pass
 
             threading.Thread(target=worker, daemon=True).start()
 
@@ -923,7 +926,10 @@ class WeatherWindow:
                     self._current_tz_abbrev = str(result.get("tz_abbrev", "GMT+8"))
                     self._render_weather_data(result)
 
-            self.root.after(0, update_ui)
+            try:
+                self.root.after(0, update_ui)
+            except Exception:
+                pass
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -2547,9 +2553,12 @@ class WeatherWindow:
             res, _ = fetch_weather_sync(city_name, unit)
             if res and badge_btn.winfo_exists():
                 self._world_weather_cache[city_name] = res
-                self.root.after(0, lambda: badge_btn.configure(
-                    text=f"{res['icon']} {res['temp']}{res['unit']}"
-                ) if badge_btn.winfo_exists() else None)
+                try:
+                    self.root.after(0, lambda: badge_btn.configure(
+                        text=f"{res['icon']} {res['temp']}{res['unit']}"
+                    ) if badge_btn.winfo_exists() else None)
+                except Exception:
+                    pass
 
         threading.Thread(target=task, daemon=True).start()
 

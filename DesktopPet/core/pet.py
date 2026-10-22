@@ -7,6 +7,7 @@ custom dialogue integrations, and summon/stealth visibility controls.
 import tkinter as tk
 import time
 import random
+import re
 from pathlib import Path
 from PIL import Image, ImageTk
 
@@ -116,6 +117,7 @@ def get_desktop_work_area() -> tuple[int, int, int, int] | None:
 class PetWindow:
     def __init__(self, root: tk.Tk, on_double_click,
                  on_bubble=None,
+                 on_move=None,
                  character_dir: Path | None = None,
                  scale: float = 1.0,
                  gravity: float = 1.2,
@@ -125,6 +127,7 @@ class PetWindow:
         self.root            = root
         self.on_double_click = on_double_click
         self.on_bubble       = on_bubble
+        self.on_move         = on_move
         self.scale           = scale
         self.gravity         = gravity
         self.bounciness      = bounciness
@@ -227,9 +230,10 @@ class PetWindow:
             self._drag_samples.append((now, event.x_root, event.y_root))
             self._drag_samples = [s for s in self._drag_samples if now - s[0] <= 0.1]
 
-            self.win.geometry(
-                f"+{event.x_root - self._drag_ox}"
-                f"+{event.y_root - self._drag_oy}")
+            nx = event.x_root - self._drag_ox
+            ny = event.y_root - self._drag_oy
+            self.win.geometry(f"+{nx}+{ny}")
+            self._notify_move(nx, ny)
 
         def on_release(event):
             self._held = False
@@ -299,7 +303,13 @@ class PetWindow:
             raw_imgs = []
             tk_imgs  = []
             if anim_dir.exists():
-                for f in sorted(anim_dir.glob("*.png")):
+                def _frame_sort_key(p: Path) -> int:
+                    if p.stem.isdigit():
+                        return int(p.stem)
+                    m = re.search(r"\d+", p.stem)
+                    return int(m.group()) if m else 0
+
+                for f in sorted(anim_dir.glob("*.png"), key=_frame_sort_key):
                     with Image.open(f) as loaded_img:
                         img = loaded_img.convert("RGBA")
                     raw_imgs.append(img)
@@ -357,6 +367,7 @@ class PetWindow:
         safe_y = max(self._min_y, min(target_y, self._floor_y))
 
         self.win.geometry(f"+{safe_x}+{safe_y}")
+        self._notify_move(safe_x, safe_y)
         try:
             self.win.lift()
             self.win.attributes("-topmost", True)
@@ -456,6 +467,7 @@ class PetWindow:
         nx = max(self._min_x, min(cur_x + step_x, self._max_x))
         ny = max(self._min_y, min(cur_y + step_y, self._floor_y))
         self.win.geometry(f"+{nx}+{ny}")
+        self._notify_move(nx, ny)
         self._vx = 0.0
         self._vy = 0.0
 
@@ -505,7 +517,7 @@ class PetWindow:
         if self.win.winfo_exists():
             self.win.after(delay, self._animate)
 
-        if anim == "walk" and not self._busy():
+        if anim == "walk":
             self._do_walk_step()
 
     def _get_flipped(self, anim: str, idx: int) -> ImageTk.PhotoImage:
@@ -526,17 +538,6 @@ class PetWindow:
         if self._is_hidden:
             self.win.after(PHYSICS_MS, self._physics_tick)
             return
-
-        # Periodic topmost check (every ~3 seconds: 100 * 30ms)
-        self._topmost_tick = getattr(self, "_topmost_tick", 0) + 1
-        if self._topmost_tick >= 100:
-            self._topmost_tick = 0
-            try:
-                self.win.lift()
-                self.win.attributes("-topmost", True)
-            except Exception:
-                pass
-
         if not self._held:
             cur_x = self.win.winfo_x()
             cur_y = self.win.winfo_y()
@@ -585,6 +586,7 @@ class PetWindow:
 
             if int(new_x) != cur_x or int(new_y) != cur_y:
                 self.win.geometry(f"+{int(new_x)}+{int(new_y)}")
+                self._notify_move(int(new_x), int(new_y))
 
         if self.win.winfo_exists():
             self.win.after(PHYSICS_MS, self._physics_tick)
@@ -607,7 +609,7 @@ class PetWindow:
             setattr(self, attr, None)
 
     def _busy(self) -> bool:
-        return self._held or not self._on_floor or abs(self._vx) > 0.5
+        return self._held or not self._on_floor or abs(self._vx) > 0.5 or getattr(self, "_sleeping", False)
 
     def _schedule_sleep(self):
         self._cancel_id("_sleep_sched_id")  
@@ -708,6 +710,7 @@ class PetWindow:
             step = self.walk_step_px if diff > 0 else -self.walk_step_px
             next_x = max(self._min_x, min(cur_x + step, self._max_x))
             self.win.geometry(f"+{next_x}+{cur_y}")
+            self._notify_move(next_x, cur_y)
                 
         else:
             if not hasattr(self, '_walk_duration_steps'):
@@ -728,11 +731,18 @@ class PetWindow:
             if next_x <= self._min_x:
                 next_x = self._min_x
                 self.facing_right = True
+                if getattr(self, "_panic_sched_id", None):
+                    self._cancel_id("_panic_sched_id")
+                    self.walk_step_px = getattr(self, "_base_walk_step_px", 2)
             elif next_x >= self._max_x:
                 next_x = self._max_x
                 self.facing_right = False
+                if getattr(self, "_panic_sched_id", None):
+                    self._cancel_id("_panic_sched_id")
+                    self.walk_step_px = getattr(self, "_base_walk_step_px", 2)
 
             self.win.geometry(f"+{next_x}+{cur_y}")
+            self._notify_move(next_x, cur_y)
 
     def _schedule_eat(self):
         self._cancel_id("_eat_sched_id")
@@ -836,6 +846,15 @@ class PetWindow:
         safe_x = max(self._min_x, min(x, self._max_x))
         safe_y = max(self._min_y, min(y, self._floor_y))
         self.win.geometry(f"+{safe_x}+{safe_y}")
+        self._notify_move(safe_x, safe_y)
+
+    def _notify_move(self, x: int, y: int):
+        fn = getattr(self, "on_move", None)
+        if callable(fn):
+            try:
+                fn(x, y, getattr(self, "w", 60))
+            except Exception:
+                pass
 
     def whip_hit(self, crack_x: int, crack_y: int, origin_x: int | None = None, origin_y: int | None = None):
         """Reacts when struck by the whip."""

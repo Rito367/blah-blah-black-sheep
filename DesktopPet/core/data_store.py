@@ -64,6 +64,12 @@ _defaults = {
     "chatter_chance": 0.20,
     "hide_hotkey": "alt+x",
     "summon_hotkey": "alt+z",
+    "custom_keybinds": [
+        {"id": "kb_summon", "name": "Summon Pet to Cursor", "key": "alt+z", "enabled": True, "type": "builtin", "target": "summon"},
+        {"id": "kb_hide", "name": "Hide / Show Pet", "key": "alt+x", "enabled": True, "type": "builtin", "target": "toggle_hide"},
+        {"id": "kb_whip", "name": "Toggle Whip Mode", "key": "alt+w", "enabled": True, "type": "builtin", "target": "toggle_whip"},
+        {"id": "kb_bomb", "name": "Drop Bomb at Cursor", "key": "alt+b", "enabled": True, "type": "builtin", "target": "drop_bomb"},
+    ],
     "countdown_mode": "workdays",
     "ttt_stats": {
         "wins": 0,
@@ -156,7 +162,7 @@ def save(data: dict) -> None:
             try:
                 backups.pop(0).unlink()
             except OSError:
-                break
+                continue
 
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         try:
@@ -200,8 +206,22 @@ def rollback_previous_version() -> dict | None:
         for k, v in _defaults.items():
             restored_data.setdefault(k, v)
 
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(restored_data, f, indent=2, ensure_ascii=False)
+        # Atomic write pattern to avoid corruption
+        tmp_file = DATA_FILE.with_suffix(".tmp")
+        try:
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(restored_data, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_file, DATA_FILE)
+        except Exception:
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(restored_data, f, indent=2, ensure_ascii=False)
+            if tmp_file.exists():
+                try:
+                    tmp_file.unlink()
+                except Exception:
+                    pass
 
         latest_backup.unlink()
         return restored_data

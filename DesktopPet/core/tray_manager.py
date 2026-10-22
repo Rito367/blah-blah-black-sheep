@@ -7,6 +7,7 @@ import threading
 from PIL import Image, ImageDraw
 import pystray
 from pystray import Menu, MenuItem as item
+from core import sound_manager
 
 
 class TrayManager:
@@ -32,6 +33,7 @@ class TrayManager:
 
     def toggle_mute(self, icon, item):
         self.is_muted = not self.is_muted
+        sound_manager.set_muted(self.is_muted)
 
     def set_pet_opacity(self, alpha: float):
         def inner(icon, item):
@@ -88,6 +90,7 @@ class TrayManager:
                 checked=lambda item: self.is_muted
             ),
             Menu.SEPARATOR,
+            item("⌨️ Keybinds & Shortcuts", lambda icon, item: self.app.root.after(0, lambda: self.app._open_window_with_opacity(self.app.keybind_win))),
             item("Settings", lambda icon, item: self.app.root.after(0, lambda: self.app.settings_win.show(*self.app.pet.get_position()))),
             item("Exit Desktop Pet", self.request_exit),
         )

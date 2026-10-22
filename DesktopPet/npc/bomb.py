@@ -260,7 +260,7 @@ class BombWindow:
             if self.time_left <= 0:
                 self.detonate()
             else:
-                self._draw_bomb()
+                self._draw_bomb(dt)
 
         elif self.state == "exploding":
             self._explosion_frame += 1
@@ -274,7 +274,7 @@ class BombWindow:
         delay = 33  # ~30 FPS
         self._loop_id = self.win.after(delay, self._tick)
 
-    def _draw_bomb(self):
+    def _draw_bomb(self, dt: float = 0.033):
         cx = CANVAS_SIZE // 2
         cy = CANVAS_SIZE // 2 + 10
 
@@ -312,9 +312,9 @@ class BombWindow:
         # Update & draw sparks
         alive_sparks = []
         for spk in self._spark_particles:
-            spk["x"] += spk["vx"]
-            spk["y"] += spk["vy"]
-            spk["life"] -= 0.12
+            spk["x"] += spk["vx"] * (dt * 30.0)
+            spk["y"] += spk["vy"] * (dt * 30.0)
+            spk["life"] -= 0.12 * (dt * 30.0)
             if spk["life"] > 0:
                 alive_sparks.append(spk)
                 sz = max(1.0, 3.5 * spk["life"])

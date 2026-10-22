@@ -150,7 +150,7 @@ def get_hit_sounds() -> list[HitSoundInfo]:
     if base_sound.exists():
         sound_files.append(base_sound)
 
-    # Scan for any additional whip_hit_* audio files in ASSETS_DIR
+    seen_paths = {p.resolve() for p in sound_files}
     if ASSETS_DIR.exists():
         for file in ASSETS_DIR.iterdir():
             if not file.is_file():
@@ -162,7 +162,9 @@ def get_hit_sounds() -> list[HitSoundInfo]:
                 continue
             if fname in ("whip_hit_trimmed.wav", "whip_hit.wav"):
                 continue
-            if file not in sound_files:
+            resolved = file.resolve()
+            if resolved not in seen_paths:
+                seen_paths.add(resolved)
                 sound_files.append(file)
 
     # Sort files: base sound first, then by index, then filename
@@ -231,10 +233,7 @@ def add_custom_sound(src_file: Path | str) -> HitSoundInfo:
 
     # Find highest existing index
     existing_sounds = get_hit_sounds()
-    highest_idx = 3
-    for s in existing_sounds:
-        if s.index > highest_idx:
-            highest_idx = s.index
+    highest_idx = max([s.index for s in existing_sounds], default=1)
     next_idx = highest_idx + 1
 
     clean_stem = re.sub(r"[^a-zA-Z0-9_\-]", "_", src_path.stem).strip("_")
@@ -331,7 +330,21 @@ def _get_mci_path(path: Path | str) -> str:
     return f'"{p_str}"'
 
 
+_is_muted: bool = False
 _crack_loaded_file: str | None = None
+
+
+def is_muted() -> bool:
+    """Returns True if sound playback is muted."""
+    return _is_muted
+
+
+def set_muted(muted: bool) -> None:
+    """Sets sound playback mute state and halts active sounds if muted."""
+    global _is_muted
+    _is_muted = bool(muted)
+    if _is_muted:
+        stop_all()
 
 
 def play_crack_sound() -> None:
@@ -339,6 +352,8 @@ def play_crack_sound() -> None:
     Plays the whip crack sound on its dedicated 'mci_crack' channel.
     Runs concurrently with any hit sound without stopping or interrupting it.
     """
+    if _is_muted:
+        return
     global _crack_loaded_file
     if not WHIP_CRACK_SOUND.exists():
         return
@@ -379,6 +394,8 @@ def play_hit_sound(sound_path: Path | str, duration_sec: float = 0.0, tk_root: A
     Plays a hit reaction sound on its dedicated 'mci_hit' channel.
     Runs concurrently with the whip crack sound without stopping or interrupting it.
     """
+    if _is_muted:
+        return
     global _hit_loaded_file, _hit_stop_timer, _hit_tk_root
     path = Path(sound_path)
     if not path.exists():
@@ -452,6 +469,8 @@ def play_explosion_sound() -> None:
     Plays the bomb explosion sound on its dedicated 'mci_bomb' channel.
     Runs concurrently with other sounds without stopping or interrupting them.
     """
+    if _is_muted:
+        return
     global _bomb_loaded_file
     if not BOMB_EXPLOSION_SOUND.exists():
         return
@@ -484,6 +503,8 @@ def play_pet_blast_sound(custom_path: Path | str | None = None) -> None:
     Plays the pet blast reaction sound on its dedicated 'mci_pet_blast' channel.
     Runs concurrently with the bomb explosion sound.
     """
+    if _is_muted:
+        return
     global _pet_blast_loaded_file
     target_path = Path(custom_path) if custom_path else PET_SCREAM_SOUND
     if not target_path.exists():
@@ -559,6 +580,8 @@ class _PreviewController:
         tk_root: Any = None,
         on_stop: Callable[[], None] | None = None,
     ) -> None:
+        if _is_muted:
+            return
         path = Path(sound_path)
         if not path.exists():
             return

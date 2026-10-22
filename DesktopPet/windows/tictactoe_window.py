@@ -235,7 +235,7 @@ class TicTacToeWindow:
 
         return None
 
-    def _minimax(self, board, maximizing):
+    def _minimax(self, board, maximizing, alpha=-float("inf"), beta=float("inf")):
         result = self._check_result(board)
 
         if result == "⭕":
@@ -250,18 +250,24 @@ class TicTacToeWindow:
             for i in range(9):
                 if board[i] == "":
                     board[i] = "⭕"
-                    score = self._minimax(board, False)
+                    score = self._minimax(board, False, alpha, beta)
                     board[i] = ""
                     best_score = max(best_score, score)
+                    alpha = max(alpha, best_score)
+                    if beta <= alpha:
+                        break
             return best_score
         else:
             best_score = float("inf")
             for i in range(9):
                 if board[i] == "":
                     board[i] = "❌"
-                    score = self._minimax(board, True)
+                    score = self._minimax(board, True, alpha, beta)
                     board[i] = ""
                     best_score = min(best_score, score)
+                    beta = min(beta, best_score)
+                    if beta <= alpha:
+                        break
             return best_score
 
     def _best_move(self, board):
@@ -271,7 +277,7 @@ class TicTacToeWindow:
         for i in range(9):
             if board[i] == "":
                 board[i] = "⭕"
-                score = self._minimax(board, False)
+                score = self._minimax(board, False, best_score, float("inf"))
                 board[i] = ""
 
                 if score > best_score:

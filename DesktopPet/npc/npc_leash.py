@@ -74,14 +74,17 @@ class NPCLeashOverlay:
         """Enables WS_EX_TRANSPARENT on Windows so mouse clicks pass right through the leash overlay."""
         try:
             import ctypes
+            toplevel.update_idletasks()
             hwnd = ctypes.windll.user32.GetParent(toplevel.winfo_id())
             if not hwnd:
                 hwnd = toplevel.winfo_id()
             GWL_EXSTYLE = -20
             WS_EX_LAYERED = 0x00080000
             WS_EX_TRANSPARENT = 0x00000020
-            style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED | WS_EX_TRANSPARENT)
+            handles = set(filter(None, (hwnd, toplevel.winfo_id(), ctypes.windll.user32.GetAncestor(hwnd, 2))))
+            for h in handles:
+                style = ctypes.windll.user32.GetWindowLongW(h, GWL_EXSTYLE)
+                ctypes.windll.user32.SetWindowLongW(h, GWL_EXSTYLE, style | WS_EX_LAYERED | WS_EX_TRANSPARENT)
         except Exception:
             pass
 
@@ -94,6 +97,7 @@ class NPCLeashOverlay:
             self.win.attributes("-topmost", True)
         except Exception:
             pass
+        self._make_click_through(self.win)
         if not self._loop_timer:
             self._tick()
 
@@ -128,8 +132,8 @@ class NPCLeashOverlay:
         except Exception:
             return
 
-        # Both points must be valid on screen
-        if hx <= 0 or hy <= 0 or cx <= 0 or cy <= 0:
+        # Both points must be valid on screen (allow x=0 or y=0 at screen edges)
+        if hx < 0 or hy < 0 or cx < 0 or cy < 0:
             self.canvas.delete("all")
             self._loop_timer = self.root.after(40, self._tick)
             return

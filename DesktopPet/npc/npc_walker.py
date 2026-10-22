@@ -92,9 +92,9 @@ class NPCWalkerWindow:
         # Start loops
         self._anim_timer = None
         self._move_timer = None
+        self._dialogue_timer = None
         self._anim_tick()
         self._move_tick()
-        self._dialogue_tick()
 
     def _build_window(self):
         """Builds or rebuilds the transparent walker sprite window."""
@@ -212,10 +212,19 @@ class NPCWalkerWindow:
         except Exception:
             pass
         self.say(random.choice(self._get_dialogue_pool("npc_walk_messages")))
+        if not getattr(self, "_dialogue_timer", None):
+            self._dialogue_tick()
 
     def disable(self):
         """Hides the NPC walker."""
         self.active = False
+        dtimer = getattr(self, "_dialogue_timer", None)
+        if dtimer is not None:
+            try:
+                self.root.after_cancel(dtimer)
+            except Exception:
+                pass
+            self._dialogue_timer = None
         try:
             if self.win.winfo_exists():
                 self.win.withdraw()
@@ -261,6 +270,7 @@ class NPCWalkerWindow:
         try:
             if self.win.winfo_exists():
                 self.win.geometry(f"+{x}+{y}")
+                self._reposition_bubble()
         except Exception:
             pass
 
@@ -282,6 +292,7 @@ class NPCWalkerWindow:
         new_x = event.x_root - self._drag_ox
         new_y = event.y_root - self._drag_oy
         self.win.geometry(f"+{new_x}+{new_y}")
+        self._reposition_bubble()
 
     def _on_release(self, _=None):
         self._dragging = False
@@ -333,6 +344,7 @@ class NPCWalkerWindow:
             overlay.destroy()
 
         overlay.bind("<Button-1>", on_click)
+        overlay.bind("<Button-3>", lambda e: overlay.destroy())
         overlay.bind("<Escape>", lambda e: overlay.destroy())
 
     def toggle_patrol(self):
@@ -369,19 +381,22 @@ class NPCWalkerWindow:
 
     # ── ANIMATION & MOVEMENT TICK LOOPS ──────────────────────────────────────
     def _anim_tick(self):
-        if self.active and self.win.winfo_exists():
-            anim = self.current_anim if self.current_anim in self.frames else "idle"
-            frame_list = self.frames.get(anim, [])
+        try:
+            if self.active and self.win.winfo_exists():
+                anim = self.current_anim if self.current_anim in self.frames else "idle"
+                frame_list = self.frames.get(anim, [])
 
-            if frame_list:
-                self.frame_index %= len(frame_list)
-                if self.facing_right:
-                    photo, _ = self.frames[anim][self.frame_index]
-                else:
-                    photo, _ = self.flipped_frames[anim][self.frame_index]
+                if frame_list:
+                    self.frame_index %= len(frame_list)
+                    if self.facing_right:
+                        photo, _ = self.frames[anim][self.frame_index]
+                    else:
+                        photo, _ = self.flipped_frames[anim][self.frame_index]
 
-                self.canvas.itemconfig(self._img_item, image=photo)
-                self.frame_index += 1
+                    self.canvas.itemconfig(self._img_item, image=photo)
+                    self.frame_index += 1
+        except Exception:
+            pass
 
         self._anim_timer = self.root.after(140 if self.current_anim == "walk" else 200, self._anim_tick)
 
@@ -445,6 +460,8 @@ class NPCWalkerWindow:
             self.win.geometry(f"+{nx}+{cur_y}")
 
         self.current_anim = "walk" if is_moving else "idle"
+        if is_moving:
+            self._reposition_bubble()
         self._move_timer = self.root.after(35, self._move_tick)
 
     # ── SPEECH BUBBLE & DIALOGUE ─────────────────────────────────────────────
@@ -465,10 +482,6 @@ class NPCWalkerWindow:
         self._bubble_win.attributes("-topmost", True)
         self._bubble_win.configure(bg=t.get("bubble_bg", "#ffffff"))
 
-        bx = self.win.winfo_x() + self.sprite_w // 2 - 80
-        by = max(10, self.win.winfo_y() - 50)
-        self._bubble_win.geometry(f"+{bx}+{by}")
-
         lbl = tk.Label(
             self._bubble_win, text=message,
             bg=t.get("bubble_bg", "#ffffff"), fg=t.get("bubble_fg", "#333333"),
@@ -477,7 +490,21 @@ class NPCWalkerWindow:
         )
         lbl.pack()
 
+        self._bubble_win.update_idletasks()
+        self._reposition_bubble()
+
         self._bubble_timer = self.root.after(duration_ms, self._hide_bubble)
+
+    def _reposition_bubble(self):
+        if self._bubble_win and self._bubble_win.winfo_exists() and self.win.winfo_exists():
+            try:
+                bw = self._bubble_win.winfo_width() or 120
+                bh = self._bubble_win.winfo_height() or 40
+                bx = self.win.winfo_x() + self.sprite_w // 2 - bw // 2
+                by = max(10, self.win.winfo_y() - bh - 6)
+                self._bubble_win.geometry(f"+{bx}+{by}")
+            except Exception:
+                pass
 
     def _hide_bubble(self):
         if self._bubble_timer:
@@ -489,13 +516,17 @@ class NPCWalkerWindow:
 
     def _dialogue_tick(self):
         """Periodically triggers casual walking dialogue."""
-        if self.active and self.current_anim == "walk" and not self._bubble_win:
+        self._dialogue_timer = None
+        if not self.active:
+            return
+
+        if self.current_anim == "walk" and not self._bubble_win:
             if random.random() < 0.25:
                 pool = self._get_dialogue_pool("npc_walk_messages")
                 if pool:
                     self.say(random.choice(pool))
 
-        self.root.after(14000, self._dialogue_tick)
+        self._dialogue_timer = self.root.after(14000, self._dialogue_tick)
 
     # ── WAYPOINT BEACON ──────────────────────────────────────────────────────
     def _show_waypoint(self, x: int, y: int):

@@ -106,7 +106,7 @@ def find_preset_path(name: str) -> str | None:
 
     candidates = presets.get(name, [])
     for c in candidates:
-        if c.startswith("http") or ":" in c and not ("\\" in c or "/" in c):
+        if c.startswith(("http://", "https://", "spotify:", "steam:")) or (":" in c and not ("\\" in c or "/" in c)):
             return c
         expanded = os.path.expandvars(c)
         exe_path = expanded.split(" --")[0]

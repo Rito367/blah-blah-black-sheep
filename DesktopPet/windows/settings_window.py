@@ -30,13 +30,14 @@ PET_PREVIEW_SIZE = 120
 
 
 class SettingsWindow:
-    def __init__(self, root: tk.Tk, get_data, save_data, on_apply=None, on_menu=None, on_password_manager=None):
+    def __init__(self, root: tk.Tk, get_data, save_data, on_apply=None, on_menu=None, on_password_manager=None, on_keybinds=None):
         self.root = root
         self.get_data = get_data
         self.save_data = save_data
         self.on_apply = on_apply
         self.on_menu  = on_menu
         self.on_password_manager = on_password_manager
+        self.on_keybinds = on_keybinds
         self.win = None
 
         self._base_img = None
@@ -647,6 +648,36 @@ class SettingsWindow:
             command=self._open_password_manager,
         ).pack(fill="x", pady=(2, 4))
 
+        # ── Keybinds & Shortcuts ──────────────────────────────────────────
+        kb_lf = tk.LabelFrame(
+            content,
+            text=" ⌨️ Global Keybinds & Shortcuts ",
+            font=("Georgia", 8, "bold"),
+            bg=t["bg_card"],
+            fg=t.get("accent", "#e74c3c"),
+            padx=10,
+            pady=8,
+        )
+        kb_lf.pack(fill="x", padx=16, pady=(0, 10))
+
+        kbs_count = len(data.get("custom_keybinds", []))
+        tk.Label(
+            kb_lf,
+            text=f"Assign custom hotkeys to pet actions, apps, URLs & speech ({kbs_count} active).",
+            bg=t["bg_card"], fg=t.get("fg_dim", "#888888"),
+            font=("Segoe UI", 8), anchor="w", wraplength=280, justify="left"
+        ).pack(fill="x", pady=(0, 6))
+
+        tk.Button(
+            kb_lf,
+            text="⌨️  Configure Custom Keybinds...",
+            font=("Georgia", 8, "bold"),
+            bg=t.get("accent", "#e74c3c"),
+            fg=t.get("fg_white", "#ffffff"),
+            relief="flat", cursor="hand2",
+            command=self._open_keybinds_window,
+        ).pack(fill="x", pady=(2, 4))
+
         # ── Reset Everything ──────────────────────────────────────────────
         reset_all_frame = tk.Frame(content, bg=t["bg_card"])
         reset_all_frame.pack(fill="x", padx=16, pady=(0, 12))
@@ -750,6 +781,10 @@ class SettingsWindow:
             self.btn_bub_bg.config(bg=self.menu_colors["bubble_bg"],  fg=self._get_contrast_fg(self.menu_colors["bubble_bg"]))
             self.btn_bub_out.config(bg=self.menu_colors["bubble_out"], fg=self._get_contrast_fg(self.menu_colors["bubble_out"]))
             self.btn_bub_fg.config(bg=self.menu_colors["bubble_fg"],  fg=self._get_contrast_fg(self.menu_colors["bubble_fg"]))
+
+    def _open_keybinds_window(self):
+        if self.on_keybinds:
+            self.on_keybinds()
 
     def _open_custom_theme_editor(self):
         """Opens a dedicated window to edit every colour of the Custom theme."""

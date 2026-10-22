@@ -361,6 +361,14 @@ class CalendarWindow:
             canvas.pack(side="left", fill="both", expand=True, padx=2, pady=2)
             scrollbar.pack(side="right", fill="y")
 
+            def _on_wheel1(e):
+                try:
+                    canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+                except Exception:
+                    pass
+            canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _on_wheel1))
+            canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
+
             for item in day_items:
                 if isinstance(item, dict):
                     self._render_bookmark_card(scroll_content, item, sel_str)
@@ -525,6 +533,14 @@ class CalendarWindow:
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True, padx=2, pady=2)
         scrollbar.pack(side="right", fill="y")
+
+        def _on_wheel2(e):
+            try:
+                canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+            except Exception:
+                pass
+        canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _on_wheel2))
+        canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
 
         for date_str, item in matched:
             card = tk.Frame(scroll_content, bg=t.get("bg_card", "#20222e"), padx=6, pady=4)
@@ -706,25 +722,33 @@ class CalendarWindow:
             if is_edit and edit_item:
                 edit_id = edit_item.get("id")
                 orig_d = target_date.strftime("%Y-%m-%d")
-                if orig_d != d_val and orig_d in bkm_dict:
-                    bkm_dict[orig_d] = [x for x in bkm_dict[orig_d] if isinstance(x, dict) and x.get("id") != edit_id]
-                    if not bkm_dict[orig_d]:
-                        del bkm_dict[orig_d]
-
-                for item in bkm_dict[d_val]:
-                    if isinstance(item, dict) and item.get("id") == edit_id:
-                        item["title"] = t_val
-                        item["content"] = c_val
-                        item["tag"] = selected_tag[0]
-                        break
-                else:
+                if orig_d != d_val:
+                    if orig_d in bkm_dict:
+                        bkm_dict[orig_d] = [x for x in bkm_dict[orig_d] if isinstance(x, dict) and x.get("id") != edit_id]
+                        if not bkm_dict[orig_d]:
+                            del bkm_dict[orig_d]
                     bkm_dict[d_val].append({
                         "id": edit_id or str(uuid.uuid4())[:8],
                         "title": t_val,
                         "content": c_val,
                         "tag": selected_tag[0],
-                        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                        "created_at": edit_item.get("created_at") or datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                     })
+                else:
+                    for item in bkm_dict[d_val]:
+                        if isinstance(item, dict) and item.get("id") == edit_id:
+                            item["title"] = t_val
+                            item["content"] = c_val
+                            item["tag"] = selected_tag[0]
+                            break
+                    else:
+                        bkm_dict[d_val].append({
+                            "id": edit_id or str(uuid.uuid4())[:8],
+                            "title": t_val,
+                            "content": c_val,
+                            "tag": selected_tag[0],
+                            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                        })
             else:
                 bkm_dict[d_val].append({
                     "id": str(uuid.uuid4())[:8],
@@ -811,6 +835,7 @@ class CalendarWindow:
         if not isinstance(bkm, dict):
             return {}
         clean_bkm = {}
+        migrated = False
         for d_str, items in bkm.items():
             if isinstance(items, list):
                 clean_list = []
@@ -825,6 +850,7 @@ class CalendarWindow:
                             "tag": "🔖",
                             "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                         })
+                        migrated = True
                 clean_bkm[d_str] = clean_list
             elif isinstance(items, str):
                 clean_bkm[d_str] = [{
@@ -834,6 +860,10 @@ class CalendarWindow:
                     "tag": "🔖",
                     "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                 }]
+                migrated = True
+        if migrated:
+            data["calendar_bookmarks"] = clean_bkm
+            self.save_data(data)
         return clean_bkm
 
     def _get_countdown_dates(self) -> set:

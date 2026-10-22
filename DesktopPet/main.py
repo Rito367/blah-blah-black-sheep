@@ -13,7 +13,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# Ensure DesktopPet root directory is in sys.path before bootstrapping
+_pet_root = str(Path(__file__).resolve().parent)
+if _pet_root not in sys.path:
+    sys.path.insert(0, _pet_root)
+
 import paths
+paths.setup_sys_path()
 
 import data_store
 import themes
@@ -42,6 +48,7 @@ from npc_walker           import NPCWalkerWindow
 from npc_leash            import NPCLeashOverlay
 from npc_customizer_window import NPCCustomizerWindow
 from bomb                 import BombManager
+from keybind_window       import KeybindWindow
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 ANIM_NAMES = {"idle", "walk", "jump", "sleep", "eat"}
@@ -86,10 +93,15 @@ class App:
 
         self.bubble = SpeechBubble(self.root, on_click=self._on_bubble_clicked)
 
+        def _on_pet_move(x, y, w):
+            if getattr(self.bubble, "_visible", False):
+                self.bubble.reposition(x, y, w)
+
         self.pet = PetWindow(
             self.root,
             on_double_click = self._on_double_click,
             on_bubble       = self._on_bubble,
+            on_move         = _on_pet_move,
             character_dir   = self._active_char_dir,
             scale           = self._data.get("scale", 1.0),
             gravity         = self._data.get("gravity", 1.2),
@@ -97,6 +109,12 @@ class App:
             chatter_chance  = self._data.get("chatter_chance", 0.20),
             get_data        = self._get_data,
         )
+
+        self.bubble.get_pet_pos = lambda: (*self.pet.get_position(), getattr(self.pet, "w", 60)) if (
+            not getattr(self.pet, "_is_hidden", False)
+            and hasattr(self.pet, "win")
+            and self.pet.win.winfo_exists()
+        ) else None
 
         # Apply saved pet opacity
         saved_pet_opacity = self._data.get("pet_opacity", self._data.get("opacity", 1.0))
@@ -145,6 +163,7 @@ class App:
             on_apply  = self._on_settings_applied,
             on_menu   = self._show_main_menu,
             on_password_manager = self._open_password_settings,
+            on_keybinds = lambda: self._open_window_with_opacity(self.keybind_win),
         )
 
         self.cutter_win = SpriteCutterWindow(
@@ -241,13 +260,67 @@ class App:
         )
 
         self.hotkeys = HotkeyManager(
-            on_hide_toggle = lambda: self.root.after(0, self.pet.toggle_hide),
-            on_summon      = lambda: self.root.after(0, self.pet.summon_to_cursor)
+            on_hide_toggle=self.pet.toggle_hide,
+            on_summon=self.pet.summon_to_cursor,
+            on_speech=lambda msg: self._show_bubble(msg, play_sound=True),
         )
-        self.hotkeys.apply_hotkeys(
-            self._data.get("hide_hotkey", "alt+x"),
-            self._data.get("summon_hotkey", "alt+z")
+
+        self.keybind_win = KeybindWindow(
+            self.root,
+            get_data=self._get_data,
+            save_data=self._save_data,
+            hotkey_manager=self.hotkeys,
+            on_menu=self._show_main_menu,
         )
+
+        # Register all built-in pet and window actions for hotkey binding
+        self.hotkeys.register_action("summon", "Summon Pet to Cursor", "🐾", "Pet", self.pet.summon_to_cursor)
+        self.hotkeys.register_action("toggle_hide", "Hide / Show Pet (Stealth)", "👁️", "Pet", self.pet.toggle_hide)
+        self.hotkeys.register_action("feed", "Feed Pet", "🍖", "Pet", self.pet.feed)
+        self.hotkeys.register_action("jump", "Pet Jump", "🦘", "Pet", self._trigger_pet_jump)
+        self.hotkeys.register_action("turn_around", "Turn Around (Flip)", "🔄", "Pet", self.pet.flip_direction)
+        self.hotkeys.register_action("toggle_patrol", "Toggle Auto Patrol", "🐾", "Pet", self._toggle_patrol)
+        self.hotkeys.register_action("toggle_chase_mouse", "Toggle Chase Mouse", "🖱️", "Pet", self._toggle_chase_mouse)
+        self.hotkeys.register_action("toggle_whip", "Toggle Whip Mode", "💥", "Pet", self._toggle_whip)
+        self.hotkeys.register_action("drop_bomb", "Drop Bomb at Cursor", "💣", "Pet", self._spawn_bomb_at_cursor)
+        self.hotkeys.register_action("detonate_bombs", "Detonate All Bombs", "💥", "Pet", self.bomb_manager.detonate_all)
+        self.hotkeys.register_action("defuse_bombs", "Defuse All Bombs", "🧯", "Pet", self.bomb_manager.defuse_all)
+        self.hotkeys.register_action("toggle_walker", "Toggle Dog Walker NPC", "🐕", "Pet", self._toggle_npc_walker)
+        self.hotkeys.register_action("toggle_mute", "Toggle Mute Sounds", "🔇", "System", self._toggle_mute_action)
+
+        # Windows & Tools
+        self.hotkeys.register_action("open_keybinds", "Open Keybind Manager", "⌨️", "Tools", lambda: self._open_window_with_opacity(self.keybind_win))
+        self.hotkeys.register_action("open_calendar", "Open Calendar", "📅", "Windows", lambda: self._open_window_with_opacity(self.cal_win))
+        self.hotkeys.register_action("open_reminders", "Open Reminders", "🔔", "Windows", lambda: self._open_window_with_opacity(self.reminder_win))
+        self.hotkeys.register_action("open_countdown", "Open Countdown Timer", "⏰", "Windows", lambda: self._open_window_with_opacity(self.timer_win))
+        self.hotkeys.register_action("open_weather", "Open Weather & World Clock", "🌤️", "Windows", lambda: self.weather_win.show_tab("weather", *self.pet.get_position()))
+        self.hotkeys.register_action("say_weather", "Say Weather & World Time", "💬", "Pet", self.weather_win.say_weather_in_bubble)
+        self.hotkeys.register_action("open_startup_apps", "Open Startup Apps", "🚀", "Windows", lambda: self._open_window_with_opacity(self.startup_apps_win))
+        self.hotkeys.register_action("open_decision", "Open Decision Maker", "🎯", "Tools", lambda: self._open_window_with_opacity(self.decision_win))
+        self.hotkeys.register_action("open_dialogue", "Open Dialogue Customizer", "💬", "Tools", lambda: self.dialogue_win.show(*self.pet.get_position()))
+        self.hotkeys.register_action("open_settings", "Open Settings", "⚙️", "Windows", lambda: self.settings_win.show(*self.pet.get_position()))
+        self.hotkeys.register_action("open_passwords", "Open Password Manager", "🔐", "Windows", self._open_password_settings)
+        self.hotkeys.register_action("open_chopsticks", "Play Chopsticks", "🥢", "Games", self._start_chopsticks)
+        self.hotkeys.register_action("open_tictactoe", "Play Tic-Tac-Toe", "🎲", "Games", self._start_ttt)
+        self.hotkeys.register_action("open_rps", "Play Rock Paper Scissors", "✊", "Games", self._start_rps_game)
+        self.hotkeys.register_action("save_github", "Save to GitHub", "💾", "System", self._save_github)
+        self.hotkeys.register_action("update_github", "Update from GitHub", "📥", "System", self._pull_github)
+        self.hotkeys.register_action("backup_project", "Backup Project", "📁", "System", self._manual_backup)
+        self.hotkeys.register_action("restart_pet", "Restart Pet", "🔄", "System", self._restart)
+        self.hotkeys.register_action("quit_pet", "Quit Application", "❌", "System", self._quit)
+
+        # Load and hook all configured custom keybinds
+        saved_kbs = self._data.get("custom_keybinds")
+        if not saved_kbs:
+            saved_kbs = [
+                {"id": "kb_summon", "name": "Summon Pet to Cursor", "key": self._data.get("summon_hotkey", "alt+z"), "enabled": True, "type": "builtin", "target": "summon"},
+                {"id": "kb_hide", "name": "Hide / Show Pet", "key": self._data.get("hide_hotkey", "alt+x"), "enabled": True, "type": "builtin", "target": "toggle_hide"},
+                {"id": "kb_whip", "name": "Toggle Whip Mode", "key": "alt+w", "enabled": True, "type": "builtin", "target": "toggle_whip"},
+                {"id": "kb_bomb", "name": "Drop Bomb at Cursor", "key": "alt+b", "enabled": True, "type": "builtin", "target": "drop_bomb"},
+            ]
+            self._data["custom_keybinds"] = saved_kbs
+            self._save_data(self._data)
+        self.hotkeys.apply_keybinds(saved_kbs, self.root)
 
         self.tray = TrayManager(self)
         self.tray.start()
@@ -320,6 +393,7 @@ class App:
             getattr(self.decision_win, "win", None),
             getattr(self.weather_win, "win", None),
             getattr(self.startup_apps_win, "win", None),
+            getattr(self.keybind_win, "win", None),
         ]
         for w in windows:
             if w is not None and w.winfo_exists():
@@ -378,8 +452,11 @@ class App:
         if "hide_hotkey" in kwargs or "summon_hotkey" in kwargs:
             self.hotkeys.apply_hotkeys(
                 self._data.get("hide_hotkey", "alt+x"),
-                self._data.get("summon_hotkey", "alt+z")
+                self._data.get("summon_hotkey", "alt+z"),
+                self.root
             )
+        if "custom_keybinds" in self._data:
+            self.hotkeys.apply_keybinds(self._data.get("custom_keybinds", []), self.root)
 
     def _on_sprites_cut(self, char_name: str, char_dir: Path, auto_equip: bool = True):
         self._characters = discover_characters()
@@ -802,6 +879,23 @@ class App:
         if val is not None:
             self._set_bomb_blast_power(val)
 
+    def _trigger_pet_jump(self):
+        self.pet.ensure_visible()
+        self.pet.is_jumping = True
+        self.pet.set_anim("jump")
+
+    def _toggle_chase_mouse(self):
+        self.pet.chase_mouse = not getattr(self.pet, "chase_mouse", False)
+        status = "ON" if self.pet.chase_mouse else "OFF"
+        self._show_bubble(f"Chase Mouse is now {status}! 🖱️")
+
+    def _toggle_mute_action(self):
+        if hasattr(self, "tray") and self.tray:
+            self.tray.is_muted = not self.tray.is_muted
+            sound_manager.set_muted(self.tray.is_muted)
+            status = "Muted 🔇" if self.tray.is_muted else "Unmuted 🔊"
+            self._show_bubble(f"Audio is now {status}!")
+
     def _toggle_patrol(self):
         self.pet.toggle_continuous_patrol()
         self._build_context_menu()
@@ -1022,6 +1116,7 @@ class App:
         self._menu.add_separator()
 
         # System & Backup
+        self._menu.add_command(label="⌨️  Keybinds & Shortcuts", command=lambda: self._open_window_with_opacity(self.keybind_win))
         self._menu.add_command(label="⚙  Settings", command=lambda: self.settings_win.show(*self.pet.get_position()))
         self._menu.add_command(label="🔐  Menu Password", command=self._open_password_settings)
 

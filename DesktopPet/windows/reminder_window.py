@@ -74,6 +74,10 @@ class ReminderWindow:
         cur_m = now.minute
         today_str = now.strftime("%Y-%m-%d")
 
+        # Purge records from previous days to prevent unbounded growth
+        if len(self._last_triggered) > 20:
+            self._last_triggered = {k: v for k, v in self._last_triggered.items() if v == today_str}
+
         reminders = self.get_data().get("reminders", [])
         for idx, r in enumerate(reminders):
             if isinstance(r, dict):
@@ -93,7 +97,7 @@ class ReminderWindow:
                             if self.on_trigger:
                                 self.on_trigger(r_text)
 
-        self.root.after(3000, self._check_reminders_loop)
+        self.root.after(1000, self._check_reminders_loop)
 
     def _toggle_ampm(self):
         curr = self.ampm_var.get()

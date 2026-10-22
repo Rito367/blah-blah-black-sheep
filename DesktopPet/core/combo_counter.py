@@ -45,8 +45,9 @@ class SparkParticle:
         self.x += self.vx * dt
         self.y += self.vy * dt
         self.vy += 220.0 * dt  # subtle gravity
-        self.vx *= 0.94
-        self.vy *= 0.94
+        decay = pow(0.94, dt * 60.0)
+        self.vx *= decay
+        self.vy *= decay
         self.life -= dt
         return self.life > 0.0
 
@@ -295,7 +296,13 @@ class ComboBadgeRenderer:
         if key in self._cache:
             return self._cache[key]
 
+        # Prevent unbounded cache growth
+        if len(self._cache) >= 64:
+            self._cache.pop(next(iter(self._cache)))
+
         if count not in self._pil_cache:
+            if len(self._pil_cache) >= 32:
+                self._pil_cache.pop(next(iter(self._pil_cache)))
             self._pil_cache[count] = self.render_base_pil(count)
 
         base = self._pil_cache[count]
@@ -419,7 +426,7 @@ class ComboCounter:
         self.current_scale += self.scale_velocity * dt
 
         if abs(diff) < 0.008 and abs(self.scale_velocity) < 0.01:
-            self.current_scale = 1.0
+            self.current_scale = self.target_scale
             self.scale_velocity = 0.0
 
         # Update sparks
