@@ -613,9 +613,9 @@ class SettingsWindow:
         )
         sec_lf.pack(fill="x", padx=16, pady=(0, 10))
 
-        is_pass_enabled = bool(data.get("menu_password_enabled", True))
+        is_pass_enabled = bool(data.get("menu_password_enabled", False))
         has_pass = bool(str(data.get("menu_password", "")).strip())
-        status_text = "🔒 Password Protection: ACTIVE" if (is_pass_enabled and has_pass) else "🔓 Password Protection: DISABLED / NOT SET"
+        status_text = "🔒 Password Protection: ACTIVE (Can be skipped anytime)" if (is_pass_enabled and has_pass) else "🔓 Password Protection: OFF (Menus open directly)"
         status_color = "#2e7d32" if (is_pass_enabled and has_pass) else "#757575"
 
         self.sec_status_lbl = tk.Label(
@@ -638,15 +638,41 @@ class SettingsWindow:
         )
         chk.pack(anchor="w", pady=(0, 6))
 
+        sec_btn_row = tk.Frame(sec_lf, bg=t["bg_card"])
+        sec_btn_row.pack(fill="x", pady=(2, 4))
+
         tk.Button(
-            sec_lf,
+            sec_btn_row,
             text="⚙️  Set / Change Password...",
-            font=("Georgia", 8, "bold"),
+            font=("Segoe UI", 8, "bold"),
             bg=t.get("accent", "#e74c3c"),
             fg=t.get("fg_white", "#ffffff"),
             relief="flat", cursor="hand2",
+            padx=8, pady=4,
             command=self._open_password_manager,
-        ).pack(fill="x", pady=(2, 4))
+        ).pack(side="left", expand=True, fill="x", padx=(0, 3))
+
+        tk.Button(
+            sec_btn_row,
+            text="⚡ Turn Off Lock",
+            font=("Segoe UI", 8, "bold"),
+            bg="#ff9800",
+            fg="#ffffff",
+            relief="flat", cursor="hand2",
+            padx=8, pady=4,
+            command=self._quick_disable_password,
+        ).pack(side="left", expand=True, fill="x", padx=(3, 0))
+
+        tk.Label(
+            sec_lf,
+            text="✨ Tip: You can always click 'Skip Password' on the unlock popup to enter immediately without typing.",
+            bg=t["bg_card"],
+            fg=t.get("fg_dim", "#777777"),
+            font=("Segoe UI", 8, "italic"),
+            wraplength=310,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 2))
+
 
         # ── Keybinds & Shortcuts ──────────────────────────────────────────
         kb_lf = tk.LabelFrame(
@@ -713,6 +739,16 @@ class SettingsWindow:
         if self.on_password_manager:
             self.on_password_manager()
 
+    def _quick_disable_password(self) -> None:
+
+        """Immediately turns off menu password protection."""
+        data = self.get_data()
+        data["menu_password_enabled"] = False
+        self.save_data(data)
+        self._update_password_status_ui()
+        parent_win = self.win if self.win is not None else self.root
+        messagebox.showinfo("Password Turned Off", "Menu password protection is now turned off!\nPet menus will open directly.", parent=parent_win)
+
     def _on_toggle_password_enabled(self) -> None:
         if self.pass_enabled_var is None:
             return
@@ -738,13 +774,14 @@ class SettingsWindow:
         if self.sec_status_lbl is None or not self.sec_status_lbl.winfo_exists():
             return
         data = self.get_data()
-        is_pass_enabled = bool(data.get("menu_password_enabled", True))
+        is_pass_enabled = bool(data.get("menu_password_enabled", False))
         has_pass = bool(str(data.get("menu_password", "")).strip())
-        status_text = "🔒 Password Protection: ACTIVE" if (is_pass_enabled and has_pass) else "🔓 Password Protection: DISABLED / NOT SET"
+        status_text = "🔒 Password Protection: ACTIVE (Can be skipped anytime)" if (is_pass_enabled and has_pass) else "🔓 Password Protection: OFF (Menus open directly)"
         status_color = "#2e7d32" if (is_pass_enabled and has_pass) else "#757575"
         self.sec_status_lbl.configure(text=status_text, fg=status_color)
         if self.pass_enabled_var is not None:
             self.pass_enabled_var.set(is_pass_enabled)
+
 
     def _choose_color(self, color_key: str):
         parent_win: tk.Misc = self.win if self.win is not None else self.root

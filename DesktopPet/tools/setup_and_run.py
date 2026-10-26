@@ -287,12 +287,17 @@ def get_start_menu_dir() -> Path | None:
 
 def register_system_shortcuts() -> bool:
     """Creates shortcuts specifically named 'run_pet' in Start Menu (Windows Search), Desktop, and Win+R."""
-    bat_launcher = PROJECT_ROOT / "run_pet.bat"
-    if not bat_launcher.exists():
+    main_py = PROJECT_ROOT / "main.py"
+    if not main_py.exists():
         return False
 
     desktop = get_desktop_dir()
     start_menu = get_start_menu_dir()
+
+    # Prefer pythonw for silent, consoleless execution
+    executable = sys.executable
+    pythonw = Path(executable).parent / "pythonw.exe"
+    target_exe = pythonw if pythonw.exists() else Path(executable)
 
     shortcut_targets = []
     # 1. Start Menu (Indexed by Windows Search when user types 'run_pet')
@@ -303,34 +308,55 @@ def register_system_shortcuts() -> bool:
     if desktop.exists():
         shortcut_targets.append(desktop / "run_pet.lnk")
 
-    shortcut_vbs = PROJECT_ROOT / ".create_shortcut.vbs"
+    # 3. Local DesktopPet shortcut inside the folder for easy 1-click silent run
+    shortcut_targets.append(PROJECT_ROOT / "run_pet.lnk")
+
+    created = False
     try:
-        vbs_lines = ['Set oWS = WScript.CreateObject("WScript.Shell")']
+        import win32com.client
+        oWS = win32com.client.Dispatch("WScript.Shell")
         for target in shortcut_targets:
-            vbs_lines.extend([
-                f'Set oLink = oWS.CreateShortcut("{target}")',
-                f'oLink.TargetPath = "{bat_launcher}"',
-                f'oLink.WorkingDirectory = "{PROJECT_ROOT}"',
-                'oLink.Description = "Run Desktop Pet (main.py)"',
-                'oLink.Save',
-            ])
-        with open(shortcut_vbs, "w", encoding="utf-8") as f:
-            f.write("\n".join(vbs_lines))
+            oLink = oWS.CreateShortcut(str(target))
+            oLink.TargetPath = str(target_exe)
+            oLink.Arguments = f'"{main_py}"'
+            oLink.WorkingDirectory = str(PROJECT_ROOT)
+            oLink.Description = "Desktop Pet Companion"
+            oLink.Save()
+        created = True
+        print("    [OK] 'run_pet' shortcut registered for Windows Search, Desktop & local folder.")
+    except Exception:
+        pass
 
-        subprocess.run(["cscript", "//nologo", str(shortcut_vbs)], check=True)
-        if shortcut_vbs.exists():
-            shortcut_vbs.unlink()
-        print("    [OK] 'run_pet' shortcut registered for Windows Search & Desktop.")
-    except Exception as e:
-        print(f"    [!] Note: Could not create shortcut: {e}")
+    if not created:
+        shortcut_vbs = PROJECT_ROOT / ".create_shortcut.vbs"
+        try:
+            vbs_lines = ['Set oWS = WScript.CreateObject("WScript.Shell")']
+            for target in shortcut_targets:
+                vbs_lines.extend([
+                    f'Set oLink = oWS.CreateShortcut("{target}")',
+                    f'oLink.TargetPath = "{target_exe}"',
+                    f'oLink.Arguments = """{main_py}"""',
+                    f'oLink.WorkingDirectory = "{PROJECT_ROOT}"',
+                    'oLink.Description = "Desktop Pet Companion"',
+                    'oLink.Save',
+                ])
+            with open(shortcut_vbs, "w", encoding="utf-8") as f:
+                f.write("\n".join(vbs_lines))
 
-    # 3. Register 'run_pet' in WindowsApps for Win+R and Search
+            subprocess.run(["cscript", "//nologo", str(shortcut_vbs)], check=True)
+            if shortcut_vbs.exists():
+                shortcut_vbs.unlink()
+            print("    [OK] 'run_pet' shortcut registered for Windows Search & Desktop.")
+        except Exception as e:
+            print(f"    [!] Note: Could not create shortcut: {e}")
+
+    # 4. Register 'run_pet' in WindowsApps for Win+R and Search
     try:
         windows_apps = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WindowsApps"
         if windows_apps.exists():
             cmd_path = windows_apps / "run_pet.cmd"
             with open(cmd_path, "w", encoding="utf-8") as f:
-                f.write(f'@start "" "{bat_launcher}"\n')
+                f.write(f'@start "" "{target_exe}" "{main_py}"\n@exit\n')
             print("    [OK] 'run_pet' command registered for Windows Run (Win + R).")
     except Exception as e:
         print(f"    [!] Note: Could not register WindowsApps alias: {e}")
@@ -405,7 +431,9 @@ def launch_pet(console_mode: bool = False, restart: bool = False):
         pythonw = Path(executable).parent / "pythonw.exe"
         if pythonw.exists():
             executable = str(pythonw)
-        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        # 0x08 = DETACHED_PROCESS, 0x0200 = CREATE_NEW_PROCESS_GROUP, 0x01000000 = CREATE_BREAKAWAY_FROM_JOB
+        kwargs["creationflags"] = 0x00000008 | 0x00000200 | 0x01000000
+
 
     subprocess.Popen([executable, str(main_py)], cwd=str(PROJECT_ROOT), **kwargs)
     print(">>> Desktop Pet companion is running! Enjoy! 🐾\n")

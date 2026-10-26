@@ -81,6 +81,7 @@ class App:
         self.root.withdraw()
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
         self._menu: tk.Menu | None = None
+        self._session_unlocked: bool = False
 
         self._data = data_store.load()
         themes.set_theme(self._data.get("theme", "pink"))
@@ -1118,7 +1119,14 @@ class App:
         # System & Backup
         self._menu.add_command(label="⌨️  Keybinds & Shortcuts", command=lambda: self._open_window_with_opacity(self.keybind_win))
         self._menu.add_command(label="⚙  Settings", command=lambda: self.settings_win.show(*self.pet.get_position()))
-        self._menu.add_command(label="🔐  Menu Password", command=self._open_password_settings)
+        # Security & Password
+        is_pass_active = bool(self._data.get("menu_password_enabled", False)) and bool(str(self._data.get("menu_password", "")).strip())
+        if is_pass_active:
+            if getattr(self, "_session_unlocked", False):
+                self._menu.add_command(label="🔒  Lock Menu Again", command=self._lock_menu)
+            self._menu.add_command(label="🔐  Password: ON (Manage / Skip)", command=self._open_password_settings)
+        else:
+            self._menu.add_command(label="🔓  Password: OFF (Setup / Enable)", command=self._open_password_settings)
 
         backup_menu = tk.Menu(self._menu, **menu_kw)
         backup_menu.add_command(label="💾  Save to GitHub", command=self._save_github)
@@ -1148,52 +1156,51 @@ class App:
                 self._menu.grab_release()
 
     def _request_menu_access(self, on_granted: Any, near_x: int | None = None, near_y: int | None = None) -> None:
-        is_enabled = bool(self._data.get("menu_password_enabled", True))
+        is_enabled = bool(self._data.get("menu_password_enabled", False))
         password = str(self._data.get("menu_password", "")).strip()
+
+        # If already unlocked this session, or security disabled, or no password chosen: grant access directly
+        if getattr(self, "_session_unlocked", False) or not is_enabled or not password:
+            on_granted()
+            return
 
         if near_x is None:
             near_x = self.root.winfo_pointerx()
         if near_y is None:
             near_y = self.root.winfo_pointery()
 
-        # If security disabled, grant access directly
-        if not is_enabled:
+        def _on_success() -> None:
+            self._session_unlocked = True
             on_granted()
-            return
 
-        # If enabled but no password has been chosen yet, open setup dialog
-        if not password:
-            self._bubble_say("🔒 Set a password to protect your pet's menus!")
+        def _on_skip() -> None:
+            self._session_unlocked = True
+            self._bubble_say("✨ Welcome! Skipped password for this session 🐾")
+            on_granted()
 
-            def _after_first_set() -> None:
-                if str(self._data.get("menu_password", "")).strip():
-                    on_granted()
-
-            def _on_first_pw_update() -> None:
-                self._build_context_menu()
-                _after_first_set()
-
-            self.password_manager.on_updated = _on_first_pw_update
-            self.password_manager.show(near_x=near_x, near_y=near_y)
-            return
-
-        # Password required: show unlock popup
+        # Password required: show friendly unlock popup with Skip option
         def _on_fail() -> None:
             phrases = [
-                "Hey! Wrong password! 🤨",
-                "Access Denied! 🚫",
-                "Nope, that's not it! 🔒",
-                "Who are you trying to hack? 😼",
-                "Password required! 🙅‍♂️"
+                "Almost got it! Or tap 'Skip Password'! 🐾",
+                "Forgot password? Feel free to click Skip! 💖",
+                "Don't worry, you can always click Skip anytime! ✨",
+                "Need a hint? Check the hint box or Skip! 😺",
             ]
             self._bubble_say(random.choice(phrases))
 
         self.password_unlock.show(
             near_x=near_x,
             near_y=near_y,
-            on_success=on_granted,
+            on_success=_on_success,
+            on_skip=_on_skip,
             on_fail=_on_fail
         )
+
+    def _lock_menu(self) -> None:
+        """Manually re-locks the menu for testing or privacy."""
+        self._session_unlocked = False
+        self._bubble_say("Menu locked! 🔒")
+        self._build_context_menu()
 
     def _bubble_say(self, msg: str) -> None:
         self._show_bubble(msg, play_sound=False)
@@ -1207,6 +1214,7 @@ class App:
         self.pet.canvas.bind("<Button-3>", self._show_context_menu)
         if hasattr(self, "settings_win") and hasattr(self.settings_win, "update_password_status_ui"):
             self.settings_win.update_password_status_ui()
+
 
     def _save_position_loop(self):
         x, y = self.pet.get_position()

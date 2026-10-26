@@ -1,6 +1,10 @@
 # Local pet settings (remove this line if you want settings backed up to GitHub)
 pet_data.json
 
+# Machine-specific shortcuts & environment caches
+.python_path
+*.lnk
+
 # Python bytecode cache
 __pycache__/
 *.py[cod]

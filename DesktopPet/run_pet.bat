@@ -53,12 +53,11 @@ if exist "tools\setup_and_run.py" (
     "!PYTHON_EXE!" setup_and_run.py --no-launch >nul 2>&1
 )
 
-:: 3. Launch main.py directly
+:: 3. Launch main.py completely detached from console/terminal with job breakaway
 set "PYTHONW_EXE=!PYTHON_EXE:python.exe=pythonw.exe!"
-if exist "!PYTHONW_EXE!" (
-    start "" "!PYTHONW_EXE!" main.py
-) else (
-    start "" "!PYTHON_EXE!" main.py
-)
+if not exist "!PYTHONW_EXE!" set "PYTHONW_EXE=!PYTHON_EXE!"
 
-exit /b 0
+"!PYTHON_EXE!" -c "import subprocess; flags = 0x08 | 0x0200 | 0x01000000; subprocess.Popen([r'!PYTHONW_EXE!', 'main.py'], creationflags=flags)" >nul 2>&1
+
+exit 0
+
