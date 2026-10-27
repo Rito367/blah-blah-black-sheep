@@ -61,14 +61,28 @@ TRACKED_FILES = [
 ]
 
 
+def get_tracked_files() -> list[str]:
+    """Collects all python scripts in the project."""
+    files = []
+    for p in PROJECT_DIR.rglob("*.py"):
+        try:
+            rel = p.relative_to(PROJECT_DIR).as_posix()
+            if not any(part.startswith(".") for part in p.parts):
+                files.append(rel)
+        except Exception:
+            pass
+    return files
+
+
 def backup_broken_files():
     """Stores crash copies neatly inside a hidden '.broken_backups' folder."""
     try:
         BROKEN_DIR.mkdir(exist_ok=True)
-        for filename in TRACKED_FILES:
-            src = PROJECT_DIR / filename
+        for rel_path in get_tracked_files():
+            src = PROJECT_DIR / rel_path
+            dst = BROKEN_DIR / f"{Path(rel_path).name}.broken"
             if src.exists():
-                shutil.copy2(src, BROKEN_DIR / f"{filename}.broken")
+                shutil.copy2(src, dst)
     except Exception:
         pass
 
@@ -78,9 +92,10 @@ def fetch_and_replace_from_github():
     backup_broken_files()
     restored = []
 
+    tracked = get_tracked_files()
     # Attempt GitHub restore if token is available
     if GITHUB_TOKEN:
-        for filename in TRACKED_FILES:
+        for filename in tracked:
             api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/DesktopPet/{filename}?ref={GITHUB_BRANCH}"
             try:
                 headers = {
@@ -91,7 +106,9 @@ def fetch_and_replace_from_github():
                 req = urllib.request.Request(api_url, headers=headers)
                 with urllib.request.urlopen(req, timeout=10) as response:
                     content = response.read().decode("utf-8")
-                    with open(PROJECT_DIR / filename, "w", encoding="utf-8") as f:
+                    out_path = PROJECT_DIR / filename
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(out_path, "w", encoding="utf-8") as f:
                         f.write(content)
                     restored.append(filename)
             except Exception as err:
@@ -116,9 +133,10 @@ def show_error_report(exc_type, exc_val, tb, restored_files):
     tb_frames = traceback.extract_tb(tb)
     failing_file = "Unknown"
     line_no = "Unknown"
+    tracked = set(get_tracked_files())
     for frame in reversed(tb_frames):
         basename = os.path.basename(frame.filename)
-        if basename in TRACKED_FILES or basename.endswith(".py"):
+        if basename in tracked or basename.endswith(".py"):
             failing_file = basename
             line_no = frame.lineno
             break
@@ -159,12 +177,18 @@ def show_error_report(exc_type, exc_val, tb, restored_files):
 
 
 def run():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(current_dir)
-    sys.path.insert(0, current_dir)
+    os.chdir(str(PROJECT_DIR))
+    if str(PROJECT_DIR) not in sys.path:
+        sys.path.insert(0, str(PROJECT_DIR))
+    try:
+        import paths
+        paths.setup_sys_path()
+    except Exception:
+        pass
 
     try:
-        runpy.run_path("main.py", run_name="__main__")
+        main_script = str(PROJECT_DIR / "main.py")
+        runpy.run_path(main_script, run_name="__main__")
     except Exception:
         exc_type, exc_val, tb = sys.exc_info()
         restored = fetch_and_replace_from_github()

@@ -281,7 +281,9 @@ class CalendarWindow:
                     self._selected_date = d
                     self._build()
 
-                def _on_enter(e, c=cell, l=num_lbl, sel=is_selected, tod=is_today, hov=t.get("bg_hover", "#2c2e3f")):
+                hov_bg = t.get("bg_hover", "#2c2e3f")
+
+                def _on_enter(e, c=cell, l=num_lbl, sel=is_selected, tod=is_today, hov=hov_bg):
                     if not sel and not tod:
                         c.config(bg=hov)
                         l.config(bg=hov)

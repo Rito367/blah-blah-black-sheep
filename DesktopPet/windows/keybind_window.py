@@ -376,15 +376,16 @@ class KeybindWindow:
         """Keep legacy summon_hotkey and hide_hotkey in data synchronized with custom_keybinds."""
         if not isinstance(data, dict) or not isinstance(kbs, list):
             return
-        active_summon = [kb.get("key") for kb in kbs if kb.get("type") == "builtin" and kb.get("target") == "summon" and kb.get("enabled", True)]
+        active_summon = [kb.get("key") for kb in kbs if isinstance(kb, dict) and kb.get("type") == "builtin" and kb.get("target") == "summon" and kb.get("enabled", True)]
         data["summon_hotkey"] = active_summon[0] if active_summon else ""
 
-        active_hide = [kb.get("key") for kb in kbs if kb.get("type") == "builtin" and kb.get("target") == "toggle_hide" and kb.get("enabled", True)]
+        active_hide = [kb.get("key") for kb in kbs if isinstance(kb, dict) and kb.get("type") == "builtin" and kb.get("target") == "toggle_hide" and kb.get("enabled", True)]
         data["hide_hotkey"] = active_hide[0] if active_hide else ""
 
     def _toggle_enable(self, item_id: str, new_val: bool):
         data = self.get_data()
-        kbs = data.get("custom_keybinds", [])
+        raw_kbs = data.get("custom_keybinds", [])
+        kbs = [kb for kb in raw_kbs if isinstance(kb, dict)]
         for kb in kbs:
             if kb.get("id") == item_id:
                 kb["enabled"] = new_val
@@ -410,7 +411,8 @@ class KeybindWindow:
                 self._editor_dlg = None
             self._editing_id = None
         data = self.get_data()
-        kbs = data.get("custom_keybinds", [])
+        raw_kbs = data.get("custom_keybinds", [])
+        kbs = [kb for kb in raw_kbs if isinstance(kb, dict)]
         data["custom_keybinds"] = [kb for kb in kbs if kb.get("id") != item_id]
         self._sync_legacy_hotkeys(data, data["custom_keybinds"])
         self.save_data(data)

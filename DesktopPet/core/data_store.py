@@ -4,6 +4,7 @@ Persists settings locally to pet_data.json with rolling local backups.
 """
 
 import os
+import copy
 import json
 import shutil
 import time
@@ -146,15 +147,19 @@ def load() -> dict:
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            for k, v in _defaults.items():
-                data.setdefault(k, v)
-            return data
+            if isinstance(data, dict):
+                res = copy.deepcopy(_defaults)
+                res.update(data)
+                return res
         except Exception:
             pass
-    return dict(_defaults)
+    return copy.deepcopy(_defaults)
 
 
 def save(data: dict) -> None:
+    if not isinstance(data, dict):
+        return
+
     if DATA_FILE.exists():
         BACKUP_DIR.mkdir(exist_ok=True)
         backups = sorted(BACKUP_DIR.glob("pet_data_*.json"))
@@ -174,13 +179,16 @@ def save(data: dict) -> None:
     tmp_file = DATA_FILE.with_suffix(".tmp")
     try:
         with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(data, f, indent=2, ensure_ascii=False, default=str)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp_file, DATA_FILE)
     except Exception:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        try:
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False, default=str)
+        except Exception:
+            pass
         if tmp_file.exists():
             try:
                 tmp_file.unlink()
@@ -202,29 +210,39 @@ def rollback_previous_version() -> dict | None:
         with open(latest_backup, "r", encoding="utf-8") as f:
             restored_data = json.load(f)
 
-        # Bug #21 fix: merge current defaults so new keys aren't missing after rollback
-        for k, v in _defaults.items():
-            restored_data.setdefault(k, v)
+        if not isinstance(restored_data, dict):
+            try:
+                latest_backup.unlink()
+            except OSError:
+                pass
+            return None
+
+        # Merge current defaults so new keys aren't missing after rollback
+        full_data = copy.deepcopy(_defaults)
+        full_data.update(restored_data)
 
         # Atomic write pattern to avoid corruption
         tmp_file = DATA_FILE.with_suffix(".tmp")
         try:
             with open(tmp_file, "w", encoding="utf-8") as f:
-                json.dump(restored_data, f, indent=2, ensure_ascii=False)
+                json.dump(full_data, f, indent=2, ensure_ascii=False, default=str)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp_file, DATA_FILE)
         except Exception:
             with open(DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(restored_data, f, indent=2, ensure_ascii=False)
+                json.dump(full_data, f, indent=2, ensure_ascii=False, default=str)
             if tmp_file.exists():
                 try:
                     tmp_file.unlink()
                 except Exception:
                     pass
 
-        latest_backup.unlink()
-        return restored_data
+        try:
+            latest_backup.unlink()
+        except OSError:
+            pass
+        return full_data
     except Exception as e:
         print(f"Rollback failed: {e}")
         return None

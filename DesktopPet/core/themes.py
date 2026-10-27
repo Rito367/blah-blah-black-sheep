@@ -43,7 +43,7 @@ THEMES = {
         "accent": "#e74c3c", "btn": "#f8bbd0",
         "fg_main": "#333333", "fg_dim": "#888888", "fg_white": "#ffffff", "fg_day_hdr": "#888888",
         "menu_bg": "#ffffff", "menu_fg": "#333333", "menu_active_bg": "#f8bbd0", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#ffffff", "bubble_out": "#ffb6c1",
+        "bubble_bg": "#ffffff", "bubble_out": "#ffb6c1", "bubble_fg": "#333333",
     },
     "dark": {
         "bg_card": "#20222e", "bg_hdr": "#151620", "bg_grid": "#181924",
@@ -51,7 +51,7 @@ THEMES = {
         "accent": "#e74c3c", "btn": "#2c2e3f",
         "fg_main": "#ffffff", "fg_dim": "#888888", "fg_white": "#ffffff", "fg_day_hdr": "#aaaaaa",
         "menu_bg": "#20222e", "menu_fg": "#ffffff", "menu_active_bg": "#2c2e3f", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#20222e", "bubble_out": "#e74c3c",
+        "bubble_bg": "#20222e", "bubble_out": "#e74c3c", "bubble_fg": "#ffffff",
     },
     "lavender": {
         "bg_card": "#ffffff", "bg_hdr": "#b39ddb", "bg_grid": "#ede7f6",
@@ -59,7 +59,7 @@ THEMES = {
         "accent": "#5e35b1", "btn": "#d1c4e9",
         "fg_main": "#333333", "fg_dim": "#777777", "fg_white": "#ffffff", "fg_day_hdr": "#777777",
         "menu_bg": "#ffffff", "menu_fg": "#333333", "menu_active_bg": "#d1c4e9", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#ffffff", "bubble_out": "#b39ddb",
+        "bubble_bg": "#ffffff", "bubble_out": "#b39ddb", "bubble_fg": "#333333",
     },
     "ocean": {
         "bg_card": "#e8f4f8", "bg_hdr": "#0077b6", "bg_grid": "#caf0f8",
@@ -67,7 +67,7 @@ THEMES = {
         "accent": "#0077b6", "btn": "#48cae4",
         "fg_main": "#03045e", "fg_dim": "#5d7f8f", "fg_white": "#ffffff", "fg_day_hdr": "#5d7f8f",
         "menu_bg": "#e8f4f8", "menu_fg": "#03045e", "menu_active_bg": "#48cae4", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#e8f4f8", "bubble_out": "#0077b6",
+        "bubble_bg": "#e8f4f8", "bubble_out": "#0077b6", "bubble_fg": "#03045e",
     },
     "forest": {
         "bg_card": "#f1f8e9", "bg_hdr": "#388e3c", "bg_grid": "#dcedc8",
@@ -75,7 +75,7 @@ THEMES = {
         "accent": "#1b5e20", "btn": "#81c784",
         "fg_main": "#1b5e20", "fg_dim": "#558b2f", "fg_white": "#ffffff", "fg_day_hdr": "#558b2f",
         "menu_bg": "#f1f8e9", "menu_fg": "#1b5e20", "menu_active_bg": "#81c784", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#f1f8e9", "bubble_out": "#388e3c",
+        "bubble_bg": "#f1f8e9", "bubble_out": "#388e3c", "bubble_fg": "#1b5e20",
     },
     "sunset": {
         "bg_card": "#fff8f0", "bg_hdr": "#ff7043", "bg_grid": "#fff3e0",
@@ -83,7 +83,7 @@ THEMES = {
         "accent": "#e64a19", "btn": "#ffab91",
         "fg_main": "#4e342e", "fg_dim": "#8d6e63", "fg_white": "#ffffff", "fg_day_hdr": "#8d6e63",
         "menu_bg": "#fff8f0", "menu_fg": "#4e342e", "menu_active_bg": "#ffab91", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#fff8f0", "bubble_out": "#ff7043",
+        "bubble_bg": "#fff8f0", "bubble_out": "#ff7043", "bubble_fg": "#4e342e",
     },
     "midnight": {
         "bg_card": "#0d0d1a", "bg_hdr": "#1a1a3e", "bg_grid": "#0d0d2b",
@@ -91,7 +91,7 @@ THEMES = {
         "accent": "#7b2fff", "btn": "#2e2e6e",
         "fg_main": "#e0e0ff", "fg_dim": "#9090bb", "fg_white": "#ffffff", "fg_day_hdr": "#9090bb",
         "menu_bg": "#0d0d1a", "menu_fg": "#e0e0ff", "menu_active_bg": "#2e2e6e", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#0d0d1a", "bubble_out": "#7b2fff",
+        "bubble_bg": "#0d0d1a", "bubble_out": "#7b2fff", "bubble_fg": "#e0e0ff",
     },
     "cherry": {
         "bg_card": "#fff5f7", "bg_hdr": "#c2185b", "bg_grid": "#fce4ec",
@@ -99,7 +99,7 @@ THEMES = {
         "accent": "#880e4f", "btn": "#f48fb1",
         "fg_main": "#4a0028", "fg_dim": "#880e4f", "fg_white": "#ffffff", "fg_day_hdr": "#880e4f",
         "menu_bg": "#fff5f7", "menu_fg": "#4a0028", "menu_active_bg": "#f48fb1", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#fff5f7", "bubble_out": "#c2185b",
+        "bubble_bg": "#fff5f7", "bubble_out": "#c2185b", "bubble_fg": "#4a0028",
     },
     # Fully customizable — loaded from pet_data.json on startup
     "custom": {
@@ -108,7 +108,7 @@ THEMES = {
         "accent": "#e74c3c", "btn": "#f8bbd0",
         "fg_main": "#333333", "fg_dim": "#888888", "fg_white": "#ffffff", "fg_day_hdr": "#888888",
         "menu_bg": "#ffffff", "menu_fg": "#333333", "menu_active_bg": "#f8bbd0", "menu_active_fg": "#ffffff",
-        "bubble_bg": "#ffffff", "bubble_out": "#ffb6c1",
+        "bubble_bg": "#ffffff", "bubble_out": "#ffb6c1", "bubble_fg": "#333333",
     },
 }
 
@@ -158,5 +158,7 @@ def current_name() -> str:
 
 def get() -> dict:
     theme_dict = dict(THEMES.get(_current_theme, THEMES["pink"]))
+    if "bubble_fg" not in theme_dict:
+        theme_dict["bubble_fg"] = theme_dict.get("fg_main", "#333333")
     theme_dict.update(_custom_colors)
     return theme_dict

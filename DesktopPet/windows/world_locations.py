@@ -308,7 +308,7 @@ def get_global_search_suggestions(query: str, max_results: int = 10) -> list[tup
     Given a query (e.g. 'J' or 'Jurong' or 'Sin' or 'Tokyo'):
     Returns a ranked list of (display_text, search_query).
     """
-    raw_q = query.strip()
+    raw_q = str(query or "").strip()
     q = raw_q.lstrip("🌍📍 ").strip().lower()
     if not q or q.startswith("auto"):
         return []
@@ -373,6 +373,10 @@ def get_global_search_suggestions(query: str, max_results: int = 10) -> list[tup
     return results[:max_results]
 
 
+# Convenient alias for external search callers
+search_locations = get_global_search_suggestions
+
+
 # ── Live Geocoding Cache & Background Fetcher ────────────────────────────────
 _geocode_cache: dict[str, list[tuple[str, str]]] = {}
 
@@ -385,7 +389,7 @@ def fetch_live_geocoding_suggestions(
     Asynchronously queries Open-Meteo Geocoding to fetch any city or town worldwide.
     Calls callback(results) on the main thread when data is ready.
     """
-    clean_q = query.strip().lstrip("🌍📍 ").strip()
+    clean_q = str(query or "").strip().lstrip("🌍📍 ").strip()
     if len(clean_q) < 3 or clean_q.lower().startswith("auto"):
         return
 
